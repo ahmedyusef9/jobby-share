@@ -1,0 +1,7 @@
+# Worker service — attach same Redis REDIS_URL as web
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/Dockerfile.worker"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"

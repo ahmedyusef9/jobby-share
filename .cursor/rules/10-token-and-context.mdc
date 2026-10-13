@@ -1,0 +1,19 @@
+---
+description: Token efficiency and context discipline on large or vague tasks
+alwaysApply: false
+---
+
+# Token & context discipline
+
+Shape non-trivial requests before acting:
+
+```
+intent -> scope -> constraints -> known context -> missing context -> plan -> verification
+```
+
+- Pull real context (files, command output, upstream docs) before guessing. This repo has
+  ~150 root scripts; grep for the exact symbol rather than reading broadly.
+- `AGENTS.md` is ~400 lines and `DATA_CONTRACT.md` is the authority on layers. Read the
+  relevant section, not the whole file.
+- Compress long context; keep critical facts at the start and end, not buried.
+- Stop when acceptance criteria are met. Match depth to need.

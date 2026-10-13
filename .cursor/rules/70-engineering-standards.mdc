@@ -1,0 +1,83 @@
+---
+description: Engineering standards translated to this Node ESM + Go stack — clean code, DRY, fail-fast, tests-first. Always applied.
+globs: *.mjs,lib/**,tests/**,test/**,providers/**,plugins/**,dashboard/**,web/**
+alwaysApply: true
+---
+
+# Engineering standards
+
+These standards apply to **all** development work (see `25-sdlc-lifecycle.mdc` for
+the gate they sit inside). The foundation's ENG-001..018 assume Python (uv, ruff,
+mypy, pydantic, FastAPI, SQLAlchemy, Alembic). None of that exists here. These
+are the same intents mapped to the stack that is actually present: Node 24+ ESM
+`.mjs`, Go 1.26 for `dashboard/`, Playwright, four runtime dependencies, no
+linter, `.editorconfig` as the formatting authority.
+
+## Structure & dependencies
+
+- **DRY (web UI):** write once, reuse. Role Job info / status / PDF / Apply live in
+  `web/src/components/job-info-panel.tsx` and `web/src/lib/role-href.ts` — see
+  `.cursor/skills/dry-reuse/SKILL.md`. Do not copy-paste those controls per page.
+- Root `*.mjs` files are CLI entrypoints. Shared logic goes in `lib/`. Keep entrypoints
+  thin.
+- Inject dependencies as parameters or env overrides (the existing `CAREER_OPS_*` pattern)
+  so behavior is testable without patching globals. No module-level clients, no hidden
+  singletons.
+- `update-system.mjs` must stay self-loading: no top-level relative imports. Pull local
+  modules lazily at point of use. The updater-migration suite enforces this — read the
+  note at the top of that file before touching it.
+- Adding a runtime dependency needs approval. Four deps is a deliberate constraint.
+
+## State & data
+
+- `data/applications.md` is the source of truth for application state. `data/applications.db`
+  is a derived index, rebuilt by `node tracker.mjs sync` and safe to delete — never treat
+  it as authoritative and never write to it directly.
+- Never hand-edit the tracker table. Add rows as TSV in `batch/tracker-additions/` and run
+  `node merge-tracker.mjs`; change status only via `node set-status.mjs` — the locked,
+  validated, atomic write path.
+- Canonical states come from `templates/states.yml`. Nowhere else.
+- Ledgers are append-only: `data/status-log.tsv`, `data/salary-observations.tsv`,
+  `data/assessments.tsv`. Never edit in place; a correction is a new line with a
+  `correction` source.
+- Concurrent writes take the existing writer lock. No fire-and-forget writes to shared
+  files.
+- Money and comp figures keep their currency and stay strings/integers in minor units —
+  never a bare float, never a lossy reformat.
+
+## Errors & external calls
+
+- Fail fast with context: the operation plus the key inputs. Never swallow an exception,
+  never `catch {}` silently.
+- Every network or subprocess call gets an explicit timeout. Follow the existing
+  `CAREER_OPS_*_TIMEOUT_MS` env-overridable pattern rather than hardcoding.
+- Scraping is expected to fail. Degrade to a reported status; do not crash the pipeline or
+  silently drop a listing.
+
+## Testing
+
+- Tests live in `tests/**/*.test.mjs` (auto-discovered) and `test/*.test.mjs`, using the
+  `pass`/`fail` helpers from `tests/helpers.mjs`. Match that idiom; do not introduce a new
+  test framework.
+- Full suite before pushing: `node test-all.mjs`. `--only` and `--quick` are dev shortcuts
+  and a green run from either is **not** a green suite.
+- Go: `cd dashboard && go test ./...`
+- Every bugfix ships its regression test first.
+- Behavior that changes scoring or output shape needs a golden run against `evals/`.
+
+## Formatting & docs
+
+- `.editorconfig` is authoritative: 2-space indent, LF, final newline, no trailing
+  whitespace. Tabs in `.go`.
+- Match the existing file-header convention: a block comment stating purpose, usage, and
+  any non-obvious invariant. Comments explain why, never what.
+- No `console.log` debugging left behind. Scripts with a machine-readable contract keep
+  stdout clean JSON.
+
+## Git
+
+- Conventional commits are mandatory — `release-please` derives versions and the changelog
+  from them. Never hand-edit `CHANGELOG.md` or `VERSION`.
+- Small, single-purpose commits; imperative subject <= 72 chars.
+- Work on a branch, never directly on `main`. `main` stays a clean mirror of upstream so
+  updates stay fast-forward.

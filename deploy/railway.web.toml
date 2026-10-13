@@ -1,0 +1,9 @@
+# Railway service hints (optional — UI can also set Dockerfile path per service)
+# Web service
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/Dockerfile.web"
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

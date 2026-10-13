@@ -1,0 +1,37 @@
+{
+  "id": "JOBBY-BL-031",
+  "title": "Access control model — RBAC evaluated, two roles adopted",
+  "status": "proposed",
+  "decided_at": "2026-08-15",
+  "detail": "deploy/design/growth-and-access.md section 4",
+  "question": "Does jobby need role-based access control?",
+  "decision": "No RBAC matrix. Keep three concerns separate: tenant isolation (security), entitlement (commercial), and a two-value role claim (user | admin). One can(ctx, action) function is the single call site.",
+  "why_not_rbac": [
+    "RBAC solves many users sharing resources with different rights; jobby has one user per tenant and no shared resources",
+    "The security boundary is already absolute — tenantRoot() from the session (BL-020) — and a role matrix on top of it protects nothing new",
+    "Capability differences here are commercial (plan, key attached), not organisational; modelling them as permissions confuses billing with security"
+  ],
+  "roles": {
+    "user": "owns exactly one tenant; every capability difference comes from entitlement, not role",
+    "admin": "platform staff — usage counters, feature flags, queue health, error rates"
+  },
+  "hard_rule": {
+    "statement": "admin must NEVER imply the ability to read tenant files",
+    "why": "an admin bypass silently undoes the BL-020 isolation boundary",
+    "if_support_needs_access": "explicit, time-boxed, audited impersonation grant that the tenant can see — not a permission bit"
+  },
+  "interface": {
+    "call": "can(ctx, action)",
+    "consults": ["role", "entitlement (plan + key attached)", "membership (reserved, unused)"],
+    "do_not_build": ["permissions table", "role editor", "role hierarchy", "per-resource ACLs"]
+  },
+  "revisit_when": {
+    "trigger": "a recruiter or agency manages several searchers",
+    "note": "that is many-to-many user<->tenant membership — relationship-shaped (ReBAC), not role-shaped; it changes the tenancy model rather than adding roles"
+  },
+  "alternatives_rejected": [
+    { "option": "full RBAC with permissions table", "why": "no user for it; ceremony over an already-absolute boundary" },
+    { "option": "roles as the gate for paid features", "why": "conflates billing state with security state; plan changes would become permission migrations" },
+    { "option": "admin role with global read", "why": "defeats tenant isolation, the one guarantee the product makes" }
+  ]
+}

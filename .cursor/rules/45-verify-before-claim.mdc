@@ -1,0 +1,99 @@
+---
+description: Never assume a feature/requirement/serve works without verifying it. Per-domain checklist via MCP before any "done" claim.
+alwaysApply: true
+---
+
+# Verify before claim — no assumptions
+
+**Never assume something works.** "Should work", "looks fine", "the code is
+there", or "it compiled" is **not** a verdict. Before claiming a feature,
+requirement, or serve is done / working / ready, verify it against the
+per-domain checklist below using MCP tools — and record the evidence (status
+code, visible text, `file:line`, command output, screenshot). A claim with no
+evidence is not a claim; it is speculation and must be marked as such.
+
+This sits inside the SDLC gate (`25-sdlc-lifecycle.mdc`): the `qa` stage is not
+cleared by reasoning about the code, only by executed verification. See also
+`40-grounding-evidence.mdc` (content grounding) and `80-qa-manual.mdc` (manual
+QA).
+
+## Per-domain verification checklist
+
+Pick every domain the work touches. For each, verify via MCP and record what
+you actually observed (not what you expected).
+
+### Web UI (dashboard pages, components)
+- Drive the attended browser with the `playwright` MCP (extension mode) or
+  `browsermcp` (existing Chrome tab) — see `.cursor/skills/qa-manual-automation/SKILL.md`
+  and `.cursor/rules/80-qa-manual.mdc`.
+- `browser_snapshot` first; if the extension/tab is disconnected **or the URL
+  is not the product origin**, stop and ask the tester to connect the right tab.
+  Do **not** fall back to an isolated browser (`cursor-ide-browser`), and do
+  **not** fetch HTML with curl/`node` and call that a UI pass.
+- Verify the **visible text** of the change in that snapshot, then exercise the
+  flow (click, type, submit). First-paint string match is not the flow.
+- Screenshot as evidence when the change is visual.
+- Until that snapshot exists, the UI claim is **unverified**.
+
+### REST API routes (`/api/...`)
+- Hit the route with `browsermcp` / `playwright` MCP `browser_navigate` or a
+  curl equivalent and assert the **HTTP status code + response body shape**.
+  Curl is allowed **here only** — never as a substitute for the Web UI domain.
+- Authed routes: confirm 401 without session and the expected payload with one.
+- Record the status code and a trimmed body excerpt.
+
+### MCP tools (`explore_jobs`, `save_jobs`, `job_table`, `whoami`, …)
+- Call the tool through the `user-jobby` (or `user-jobby-2`) MCP namespace via
+  `CallDynamicTool` — do not infer behavior from reading `tools.ts`.
+- Assert the response shape and the feature-specific field (e.g. `profile_id`
+  stamps the row, `whoami.searchProfiles` lists active profiles).
+- For write tools, confirm the side effect on disk (`data/pipeline.md`,
+  `config/search-profiles.json`) by reading the file after the call.
+
+### CLI entrypoints (`scan.mjs`, `scripts/*.mjs`)
+- Run the actual command and check the **exit code + stdout/stderr**.
+- Scripts with a machine-readable contract must emit clean JSON to stdout;
+  parse it and assert the field that proves the change.
+
+### Tests (`tests/**/*.test.mjs`, `test/web-e2e/*.spec.mjs`)
+- Run the specific test for the touched area, then `node test-all.mjs` for the
+  suite. `--only` / `--quick` green is **not** a green suite.
+- A bugfix ships its regression test first; the test must fail before the fix
+  and pass after.
+
+### GitHub traceability (issues, milestones, labels, PRs)
+- Use the `plugin-github-github` MCP (`GetDynamicTools` first) — never `gh` or
+  scripts. Confirm the issue exists, is tagged to its milestone, and carries
+  the `stage:*` label expected at this point in the lifecycle.
+
+### Data / store files (`config/search-profiles.json`, `data/pipeline.md`, …)
+- Read the file and assert the row/entry shape that proves the change. Never
+  claim a write succeeded without reading the persisted result back.
+
+## Rules
+
+1. **Verify every domain the work touches** — not just the one you're most
+   comfortable with. A UI change that also touches the API and the MCP tool
+   needs three checks.
+2. **Use MCP for live verification** — `playwright`/`browsermcp` for UI,
+  `user-jobby` for MCP tools, `plugin-github-github` for traceability. Reading
+   the code is not verification.
+3. **Record the evidence** in the report: status code, visible text,
+   `file:line`, command output, or screenshot. "Verified" with no evidence is
+   the same as "assumed".
+4. **A failure is recorded immediately** — do not weaken the assertion to
+   match a defect, and do not claim done while a check is red.
+5. **If a domain cannot be verified** (env down, MCP unavailable, secret
+   missing), say so explicitly and mark the claim **unverified** — do not
+   silently downgrade to "should work".
+
+## Anti-pattern
+
+- "I added the route, it should work." → No. Hit it, show the status + body.
+- "The MCP tool already supported this." → No. Call it, show the response.
+- "Tests pass." → No. Show the test name and the green run for the touched area.
+- "It compiles." → No. Compile is not run. Run it and show the output.
+- "I curled /explore and grepped the HTML." → No. That is not Web UI QA.
+  Snapshot the product tab with playwright/browsermcp; click the flow.
+- "Playwright was on connect.html so I used Cursor's browser / fetch." → No.
+  Stop. Mark **unverified**. Ask the tester to connect the Jobby tab.

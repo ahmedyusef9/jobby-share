@@ -1,0 +1,92 @@
+[
+  {
+    "name": "backlog",
+    "color": "0E8A16",
+    "description": "Tracked implementation_backlog.csv row"
+  },
+  {
+    "name": "milestone",
+    "color": "1D76DB",
+    "description": "Tied to ROADMAP milestone"
+  },
+  {
+    "name": "design",
+    "color": "5319E7",
+    "description": "Has deploy/design reference"
+  },
+  {
+    "name": "P0",
+    "color": "B60205",
+    "description": "Priority P0"
+  },
+  {
+    "name": "P1",
+    "color": "D93F0B",
+    "description": "Priority P1"
+  },
+  {
+    "name": "P2",
+    "color": "FBCA04",
+    "description": "Priority P2"
+  },
+  {
+    "name": "status:done",
+    "color": "0E8A16",
+    "description": "Backlog Status Done/Implemented"
+  },
+  {
+    "name": "status:in-progress",
+    "color": "FBCA04",
+    "description": "Backlog In Review / Ready"
+  },
+  {
+    "name": "status:proposed",
+    "color": "C5DEF5",
+    "description": "Backlog Proposed"
+  },
+  {
+    "name": "area:auth",
+    "color": "006B75",
+    "description": "Authentication and accounts"
+  },
+  {
+    "name": "area:tenant",
+    "color": "006B75",
+    "description": "Multi-tenant isolation"
+  },
+  {
+    "name": "area:queue",
+    "color": "006B75",
+    "description": "BullMQ and workers"
+  },
+  {
+    "name": "area:mcp",
+    "color": "006B75",
+    "description": "MCP product API"
+  },
+  {
+    "name": "area:scan",
+    "color": "006B75",
+    "description": "Discovery and scan"
+  },
+  {
+    "name": "area:admin",
+    "color": "006B75",
+    "description": "Operator console"
+  },
+  {
+    "name": "area:design",
+    "color": "5319E7",
+    "description": "Design / contract only"
+  },
+  {
+    "name": "area:infra",
+    "color": "006B75",
+    "description": "Deploy, CI, compose"
+  },
+  {
+    "name": "status:in-qa",
+    "description": "Built + merged to release, awaiting BrowserMCP QA pass",
+    "color": "1D76DB"
+  }
+]

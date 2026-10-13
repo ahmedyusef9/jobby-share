@@ -1,0 +1,120 @@
+# QA runner — overlay on deploy/docker-compose.yml, never a replacement for it.
+#
+#   one-shot:    docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.qa.yml run --rm qa
+#   repeating:   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.qa.yml --profile qa-loop up -d qa-loop
+#   logs:        docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.qa.yml logs -f qa-loop
+#
+# Why an overlay: the release stack in docker-compose.yml is what ships. A test
+# runner that can revoke keys and flip account plans does not belong in it by
+# default, and `profiles:` alone would still put it one typo away from starting
+# alongside production.
+#
+# The image is pinned to the same Playwright the repo depends on (1.62.1). A
+# runner on a different Playwright than the suite is testing a different
+# browser than the suite was written against, which is a silent way to get
+# results that do not reproduce.
+
+name: jobby-deploy
+
+volumes:
+  # Host node_modules are darwin binaries; mounting them into Linux breaks
+  # playwright. A named volume keeps the container's own install across runs so
+  # only the first run pays for dependency installation. The repository's root
+  # lockfile is intentionally ignored, so a clean checkout falls back to npm
+  # install while a consumer that supplies a lockfile still gets npm ci.
+  qa-node-modules:
+
+x-qa-base: &qa-base
+    image: mcr.microsoft.com/playwright:v1.62.1-noble
+    working_dir: /work
+    networks: [default]
+    depends_on:
+      - web
+    # The app IS reachable over the compose network as web:3000 — verified with
+    # curl from this container (307). The M7 loopback bind applies to the HOST
+    # publish address (127.0.0.1:${JOBBY_WEB_PORT} from .ports.yml), not to what Next binds inside its own
+    # container, so no host round-trip is needed and none should be added.
+    #
+    # host-gateway stays available for the case where the stack runs outside
+    # compose: set JOBBY_QA_BASE_URL=http://host.docker.internal:${JOBBY_WEB_PORT} then.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - JOBBY_E2E_BASE_URL=${JOBBY_QA_BASE_URL:-http://web:3000}
+      - JOBBY_MCP_PUBLIC_URL=${JOBBY_MCP_PUBLIC_URL:-}
+      - JOBBY_E2E_EMAIL=${JOBBY_E2E_EMAIL:-}
+      - JOBBY_E2E_PASSWORD=${JOBBY_E2E_PASSWORD:-}
+      - JOBBY_E2E_MEMBER_B_EMAIL=${JOBBY_E2E_MEMBER_B_EMAIL:-}
+      - JOBBY_E2E_MEMBER_B_PASSWORD=${JOBBY_E2E_MEMBER_B_PASSWORD:-}
+      - JOBBY_E2E_MCP_KEY=${JOBBY_E2E_MCP_KEY:-}
+      - JOBBY_OPERATOR_SECRET=${JOBBY_OPERATOR_SECRET:-}
+      - JOBBY_QA_EVIDENCE=${JOBBY_QA_EVIDENCE:-}
+      - QA_ROUND=${QA_ROUND:-0}
+      - QA_ACTOR=${QA_ACTOR:-container}
+      - CI=1
+      - JOBBY_QA_INTERVAL_SECONDS=${JOBBY_QA_INTERVAL_SECONDS:-1800}
+    volumes:
+      - ..:/work
+      - qa-node-modules:/work/node_modules
+
+services:
+  qa:
+    <<: *qa-base
+    profiles: ["qa"]
+    command:
+      - bash
+      - -lc
+      - |
+        set -o pipefail
+        [ -d node_modules/playwright ] || { npm ci --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund; }
+        # host.docker.internal resolves to both A and AAAA records, but the
+        # published port is IPv4-only (127.0.0.1:${JOBBY_WEB_PORT}). curl falls back to v4;
+        # Chromium does not, and fails ERR_CONNECTION_REFUSED against a host
+        # that answers fine over v4. Pin the literal v4 address up front.
+        # Only relevant on the host.docker.internal fallback: that name carries
+        # an AAAA record the IPv4-only published port cannot serve.
+        case "$$JOBBY_E2E_BASE_URL" in *host.docker.internal*)
+          v4=$$(getent ahostsv4 host.docker.internal | awk 'NR==1{print $$1}')
+          [ -n "$$v4" ] && export JOBBY_E2E_BASE_URL="$${JOBBY_E2E_BASE_URL/host.docker.internal/$$v4}" ;;
+        esac
+        echo "target: $$JOBBY_E2E_BASE_URL"
+        npm run test:e2e; suite=$$?
+        # The report is the deliverable, so it is generated whether the suite
+        # passed or not — a run that fails and produces nothing to read is the
+        # state this whole system exists to remove.
+        node scripts/qa-report.mjs --round "$${QA_ROUND}" --write --summary || true
+        exit $$suite
+
+  # Repeating runner. The interval defaults to 30 minutes for a specific
+  # reason: scripts/mcp-guards.mjs locks a key for AUTH_LOCKOUT_MINUTES=15
+  # after AUTH_FAILURE_LOCKOUT_AFTER=20 auth failures, and this suite generates
+  # auth failures deliberately (revoked keys, unkeyed calls, cross-tenant
+  # probes). Runs closer together than that window trip the product's own
+  # brute-force protection and fail with 429s that look like defects.
+  qa-loop:
+    <<: *qa-base
+    profiles: ["qa-loop"]
+    restart: unless-stopped
+    command:
+      - bash
+      - -lc
+      - |
+        [ -d node_modules/playwright ] || { npm ci --no-audit --no-fund || npm install --ignore-scripts --no-audit --no-fund; }
+        # host.docker.internal resolves to both A and AAAA records, but the
+        # published port is IPv4-only (127.0.0.1:${JOBBY_WEB_PORT}). curl falls back to v4;
+        # Chromium does not, and fails ERR_CONNECTION_REFUSED against a host
+        # that answers fine over v4. Pin the literal v4 address up front.
+        # Only relevant on the host.docker.internal fallback: that name carries
+        # an AAAA record the IPv4-only published port cannot serve.
+        case "$$JOBBY_E2E_BASE_URL" in *host.docker.internal*)
+          v4=$$(getent ahostsv4 host.docker.internal | awk 'NR==1{print $$1}')
+          [ -n "$$v4" ] && export JOBBY_E2E_BASE_URL="$${JOBBY_E2E_BASE_URL/host.docker.internal/$$v4}" ;;
+        esac
+        echo "target: $$JOBBY_E2E_BASE_URL"
+        while true; do
+          echo "=== qa run $$(date -u +%FT%TZ) ==="
+          npm run test:e2e || true
+          node scripts/qa-report.mjs --round "$${QA_ROUND}" --write --summary || true
+          echo "=== sleeping $${JOBBY_QA_INTERVAL_SECONDS}s (auth lockout window is 15m) ==="
+          sleep "$${JOBBY_QA_INTERVAL_SECONDS}"
+        done

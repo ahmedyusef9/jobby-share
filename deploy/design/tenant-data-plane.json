@@ -1,0 +1,54 @@
+{
+  "id": "JOBBY-BL-024",
+  "title": "Shared posting catalog vs tenant-private data",
+  "status": "proposed",
+  "decided_at": "2026-08-13",
+  "extends": "JOBBY-BL-016 (tenancy.json)",
+  "detail": "deploy/design/multi-tenancy.md",
+  "decision": "Global postings catalog written by ONE platform crawler; per-tenant overlay rows for triage/score/report; project matches into each tenant's data/pipeline.md + data/scan-history.tsv so career-ops .mjs scripts keep files as SoT",
+  "classes": {
+    "A_global": [
+      "ATS postings (scan-ats-full.mjs, /api/explore)",
+      "posting body fetch (/api/posting)",
+      "liveness (check-liveness.mjs)",
+      "company logos (/api/logo cache)",
+      "company -> ATS slug map (verify-portals)"
+    ],
+    "B_tenant_private": [
+      "cv.md",
+      "config/profile.yml",
+      "modes/_profile.md",
+      "modes/_custom.md",
+      "data/applications.md",
+      "data/pipeline.md",
+      "data/contacts.tsv",
+      "reports/",
+      "output/",
+      "interview-prep/",
+      ".career-ops-web/runs/",
+      "secrets"
+    ],
+    "C_tenant_state_over_A": [
+      "triage decision",
+      "match score",
+      "report number",
+      "already-seen dedup"
+    ]
+  },
+  "schema": {
+    "postings": "posting_id PK, url_norm UNIQUE, ats_vendor, external_id, company, title, location, first_seen_global, last_seen, live_status",
+    "tenant_posting_state": "(tenant_id, posting_id) PK, first_seen_tenant, triage, score, report_num"
+  },
+  "why": "The full-ATS sweep is the slowest operation and is byte-identical per tenant; per-tenant crawling is O(tenants x corpus) HTTP for zero added information.",
+  "side_benefit": "Splitting first_seen_global from first_seen_tenant fixes the inbox freshness facet (career-ops.ts readScanDates), which today reads 'first seen by me' as if it were posting age.",
+  "constraints": [
+    "Catalog is an INDEX, never a replacement for markdown SoT (volume-schema.json principle)",
+    "No cross-tenant inference from Class B data without explicit opt-in (AGENTS.md Source-of-Truth Boundary)",
+    "Postings remain untrusted input; sanitize once at ingest — sharing raises blast radius, not per-item risk",
+    "Move logo cache out of .career-ops-web/ (Class A living in a Class B directory)"
+  ],
+  "alternatives_rejected": [
+    { "option": "per-tenant crawl of the full ATS corpus", "why": "duplicated cost/latency for identical public data" },
+    { "option": "shared catalog INCLUDING tenant triage/scores", "why": "leaks job-search intent across tenants" }
+  ]
+}

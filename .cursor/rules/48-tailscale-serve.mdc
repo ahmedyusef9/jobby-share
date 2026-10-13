@@ -1,0 +1,55 @@
+---
+description: Tailscale Serve/Funnel must proxy to Docker compose-web from .ports.yml. Never 3001 or container 3000.
+alwaysApply: true
+---
+
+# Tailscale Serve / Funnel → Docker
+
+Jobby’s public MCP URL is **Tailscale HTTPS in front of Compose**. The app
+still binds **container 3000**; the host publish is `.ports.yml` `compose-web`
+(today **4700**). Funnel/Serve that still point at `127.0.0.1:3001` return **502**.
+
+How: `.cursor/skills/tailscale-serve/SKILL.md`. Docker: `47-docker-first.mdc`.
+
+## Mapping (mandatory)
+
+```
+Tailscale HTTPS
+  :443 /mcp /api/mcp /sse /.well-known  → ChatGPT / Claude.ai (no port in the URL)
+  :8443 / :8444                         → Cursor / QA (explicit port; ChatGPT rejects this)
+        → http://127.0.0.1:<compose-web>     # from .ports.yml
+                → container :3000
+```
+
+- Read `.ports.yml` **before** `tailscale serve` or `tailscale funnel`.
+- Backend is always `http://127.0.0.1:<compose-web>`. Never `3001`, never
+  container `3000`, never another project’s port.
+- Compose must be up (`127.0.0.1:<compose-web>→3000`) **before** clients connect.
+
+## Serve vs Funnel
+
+| Mode | Who can reach it | Use |
+|---|---|---|
+| `tailscale serve` | Tailnet only | Cursor/Claude on another tailnet machine |
+| `tailscale funnel` | Public internet | ChatGPT, Claude.ai, phones off-tailnet |
+
+ChatGPT **requires Funnel** (public HTTPS). Serve is not enough.
+
+## Do not steal OmniRoute
+
+On this Mac, `:443` `/` is the OmniRoute gateway. ChatGPT and Claude.ai use
+**this machine’s** `:443` **paths** (`/mcp`, `/api/mcp`, `/sse`, `/.well-known`)
+— the connector URL is `https://<this-host>.<tailnet>.ts.net/mcp/<key>` with
+**no port**. Do not retarget `:443` `/` to Jobby. `:8443` is MCP-only for
+clients that accept a port (Cursor). `your-gateway:8443` is a different host.
+
+## After Compose port moves
+
+If `.ports.yml` `compose-web` changes, **reset Funnel/Serve the same day**.
+Stale `:3001` mappings are a product outage, not a client bug.
+
+## Secrets
+
+Never paste a live `jb_…` key into chat, issues, or rules. Rotate any key that
+was pasted. Verify with `/signin` (200) and `/api/mcp` Accept SSE — not with a
+raw key in the URL.

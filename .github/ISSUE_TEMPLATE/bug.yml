@@ -1,0 +1,33 @@
+name: Bug
+description: Something broken in jobby (not upstream career-ops)
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For upstream career-ops bugs, use [santifer/career-ops](https://github.com/santifer/career-ops/issues).
+        Link a backlog id if this maps to `JOBBY-BL-###`.
+  - type: input
+    id: backlog_id
+    attributes:
+      label: Backlog ID (if any)
+      placeholder: JOBBY-BL-032
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

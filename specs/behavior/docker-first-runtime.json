@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0",
+  "spec_id": "docker-first-runtime",
+  "title": "Docker-first runtime and deploy stages",
+  "objective": "Jobby product UI runs only from Compose on the host port in .ports.yml; host Next is refused unless an explicit escape is set.",
+  "status": "draft",
+  "requirements": [
+    {
+      "id": "REQ-DF-001",
+      "statement": "Product work starts Compose from deploy/docker-compose.yml and does not start a host Next process for jobby.",
+      "criterion_ref": "tests/compose-web-live.test.mjs",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #84 JOBBY-BL-079; .cursor/rules/47-docker-first.mdc"
+      }
+    },
+    {
+      "id": "REQ-DF-002",
+      "statement": "The only local web URL is http://127.0.0.1:<compose-web> from .ports.yml (compose-web is 4700). 3001 is not the recorded compose-web port.",
+      "criterion_ref": "tests/compose-web-live.test.mjs",
+      "origin": {
+        "kind": "reference",
+        "reference": ".ports.yml services.compose-web; GitHub #87; .cursor/rules/47-docker-first.mdc"
+      }
+    },
+    {
+      "id": "REQ-DF-003",
+      "statement": "scripts/web-ui.sh refuses to start unless JOBBY_ALLOW_HOST_NEXT=1.",
+      "criterion_ref": "tests/web-ui-host-next-guard.test.mjs",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #84 acceptance; .cursor/rules/47-docker-first.mdc"
+      }
+    },
+    {
+      "id": "REQ-DF-004",
+      "statement": "Deploy stages are dev (local compose), stage (compose.qa or remote compose), and production (same Dockerfiles; Kubernetes later). This issue does not require cluster manifests.",
+      "criterion_ref": "tests/deploy-stages.test.mjs",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #84; .cursor/skills/docker-deploy/SKILL.md"
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SCN-DF-001",
+      "title": "Compose serves the product on compose-web",
+      "requirement_ids": ["REQ-DF-001", "REQ-DF-002"],
+      "given": [
+        "deploy/docker-compose.yml is up with JOBBY_WEB_PORT from .ports.yml compose-web."
+      ],
+      "when": "A client requests /signin on http://127.0.0.1:4700.",
+      "then": [
+        "The response is HTTP 200 from the compose web service.",
+        "The recorded compose-web port is 4700, not 3001."
+      ]
+    },
+    {
+      "id": "SCN-DF-002",
+      "title": "Host Next is refused without the escape",
+      "requirement_ids": ["REQ-DF-003"],
+      "given": [
+        "JOBBY_ALLOW_HOST_NEXT is unset or not 1."
+      ],
+      "when": "scripts/web-ui.sh is started.",
+      "then": [
+        "The script exits without binding a host Next server."
+      ]
+    },
+    {
+      "id": "SCN-DF-003",
+      "title": "Explicit escape still starts host Next",
+      "requirement_ids": ["REQ-DF-003"],
+      "given": [
+        "JOBBY_ALLOW_HOST_NEXT=1 is set."
+      ],
+      "when": "scripts/web-ui.sh is started.",
+      "then": [
+        "The script is allowed to start as an emergency escape."
+      ]
+    },
+    {
+      "id": "SCN-DF-004",
+      "title": "Stage names are documented without requiring a cluster",
+      "requirement_ids": ["REQ-DF-004"],
+      "given": [
+        "The docker-deploy skill is read."
+      ],
+      "when": "An agent picks a deploy stage.",
+      "then": [
+        "dev, stage, and production are named.",
+        "Kubernetes manifests are not required to close #84."
+      ]
+    }
+  ],
+  "open_questions": []
+}

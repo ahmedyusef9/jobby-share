@@ -1,0 +1,65 @@
+{
+  "id": "JOBBY-BL-023",
+  "title": "Plan gating — trial / basic / advanced",
+  "status": "proposed",
+  "decided_at": "2026-08-13",
+  "detail": "deploy/design/multi-tenancy.md",
+  "decision": "Single entitlements(tenant) derivation + server-side requireFeature/consume guards; Redis counters; charge at enqueue, reconcile at completion; re-check in worker",
+  "amended_2026_08_15": {
+    "detail": "deploy/design/growth-and-access.md",
+    "change": "ALPHA INVERTS THE KEY MODEL. The tiers below assumed the platform pays for scoring on trial/basic (house key), with BYO reserved for advanced. For alpha there is no house key at all: everything is free except model work, and the user's own API key is the ONLY way to score.",
+    "consequences": [
+      "JOBBY-BL-021 (encrypted key custody) becomes launch-blocking rather than an advanced-tier feature — BYO is the only scoring path, so every scoring user hands over a credential on day one",
+      "No platform spend to meter in alpha: quotas, billing and the consume() control loop are not needed to launch",
+      "Metering becomes measurement — record per-run cost (already captured by /api/run) so paid tiers can be priced from observed numbers instead of guesses",
+      "CV editing stays free (deterministic; scripts/cv-export.mjs needs no model). CV chat is model work and sits behind the same gate as scoring."
+    ],
+    "tiers_below_apply": "post-alpha, once a measured cost per evaluation supports a price"
+  },
+  "model": {
+    "features": "boolean capability (scan.schedule, engine.byo, batch.fanout, apply.drive)",
+    "meters": "consumption (run.evaluate, cv.chat, assistant.msg, scan.full)",
+    "rule": "UI hiding is UX, never a gate; every gate is server-side at the resource boundary"
+  },
+  "tiers": {
+    "trial": {
+      "duration": "14 days",
+      "llm": "house key only",
+      "evaluations": "~10 total",
+      "scan": "manual only",
+      "features_off": ["scan.schedule", "engine.byo", "batch.fanout", "apply.drive"]
+    },
+    "basic": {
+      "llm": "house key or BYO",
+      "evaluations": "monthly quota",
+      "scan": "daily",
+      "seats": 1
+    },
+    "advanced": {
+      "llm": "BYO keys, all engines",
+      "evaluations": "high quota / fair use",
+      "features_on": ["scan.schedule", "scan.full-sweep", "batch.fanout", "apply.drive", "queue.priority"]
+    }
+  },
+  "cost_classes": {
+    "zero_token": ["/api/explore", "/api/tracker/*", "/api/pipeline", "/api/cv", "/api/cv/export", "/api/report", "/api/followups"],
+    "llm_metered": ["/api/run", "/api/cv/chat", "/api/assistant", "/api/explore/ai", "/api/match-hints", "/api/apply/fill"],
+    "heavy_privileged": ["deploy/worker/scheduler.mjs", "scan-ats-full", "batch/", "/api/apply/drive", "/api/clis BYO engines"]
+  },
+  "enforcement": {
+    "counters": "Redis usage:{tenant}:{period}:{meter}",
+    "reserve": "at /api/run before enqueueRun; refund on failed/cancelled",
+    "defense_in_depth": "worker re-checks entitlement — anything that can write Redis can enqueue",
+    "error_contract": "typed 402/403 { feature, limit, used, upgradeTo } so UI renders an upgrade prompt",
+    "queue": "per-tenant concurrency cap + plan priority so trial cannot starve paid",
+    "trial_abuse": "bind trial to OAuth provider id + verified email; house keys never usable for batch fan-out"
+  },
+  "fixes": [
+    "/api/usage currently reads the OPERATOR's ~/.claude/projects (usage/route.ts:17-19) — replace with the tenant's own metered counters"
+  ],
+  "alternatives_rejected": [
+    { "option": "client-side feature flags / hidden tabs", "why": "not a gate; API remains callable" },
+    { "option": "meter only in the worker", "why": "tenant can enqueue unbounded work before any check" },
+    { "option": "meter only at the route", "why": "no refund path for failed jobs" }
+  ]
+}

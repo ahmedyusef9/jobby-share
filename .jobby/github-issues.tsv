@@ -1,0 +1,78 @@
+backlog_id	issue_number	title	state	milestone	status_csv
+JOBBY-BL-001	1	[JOBBY-BL-001] Carbon Emerald tokens and fonts	closed	M0	Done
+JOBBY-BL-002	2	[JOBBY-BL-002] Jobby wordmark and favicon	closed	M0	Done
+JOBBY-BL-003	3	[JOBBY-BL-003] Deploy compose web+worker+redis	closed	M0	Done
+JOBBY-BL-004	4	[JOBBY-BL-004] Bake OpenCode into images	closed	M0	Done
+JOBBY-BL-005	5	[JOBBY-BL-005] OpenRouter API-key Config path	closed	M0	Done
+JOBBY-BL-006	6	[JOBBY-BL-006] BullMQ enqueue from /api/run	closed	M0	Done
+JOBBY-BL-007	7	[JOBBY-BL-007] Always list engines + error surface	closed	M0	Done
+JOBBY-BL-008	8	[JOBBY-BL-008] End-to-end Score in Docker compose	closed	M0	Done
+JOBBY-BL-009	9	[JOBBY-BL-009] Resolve host:3000 vs compose:3001	closed	M0	Done
+JOBBY-BL-010	10	[JOBBY-BL-010] Worker failure visibility in UI	closed	M0	Done
+JOBBY-BL-011	11	[JOBBY-BL-011] PDF / Playwright smoke via worker	closed	M0	Done
+JOBBY-BL-012	12	[JOBBY-BL-012] Enable optional scan scheduler profile	open	M0	Proposed
+JOBBY-BL-013	13	[JOBBY-BL-013] Secrets rotate/delete UX	open	M0	Proposed
+JOBBY-BL-014	14	[JOBBY-BL-014] Compose build check in CI	closed	M0	Done
+JOBBY-BL-015	15	[JOBBY-BL-015] Persistent volume + schema design	closed	M1	Done
+JOBBY-BL-016	16	[JOBBY-BL-016] Tenant isolation model	closed	M1	Done
+JOBBY-BL-017	17	[JOBBY-BL-017] n8n subscription workflows	closed	M0	Done
+JOBBY-BL-018	18	[JOBBY-BL-018] Deploy web+worker+Redis to Railway	open	M0	Proposed
+JOBBY-BL-019	19	[JOBBY-BL-019] AI chat to modify cv.md from the CV tab	closed	M0	Done
+JOBBY-BL-020	20	[JOBBY-BL-020] Auth session + request-scoped tenant root	open	M1	Ready
+JOBBY-BL-021	21	[JOBBY-BL-021] Per-tenant encrypted key store + allowlisted child env	open	M1	Proposed
+JOBBY-BL-022	22	[JOBBY-BL-022] Tenant-aware queue with per-tenant concurrency	open	M5	Proposed
+JOBBY-BL-023	23	[JOBBY-BL-023] Entitlements service: trial / basic / advanced	open	M6	Proposed
+JOBBY-BL-024	24	[JOBBY-BL-024] Shared posting catalog + per-tenant overlay	open	M3	Proposed
+JOBBY-BL-025	25	[JOBBY-BL-025] Sandboxed per-job agent execution	open	M7	Proposed
+JOBBY-BL-026	26	[JOBBY-BL-026] Tenant-aware root for the .mjs toolchain	open	M1	Ready
+JOBBY-BL-027	27	[JOBBY-BL-027] Gateway / identity platform / secrets manager adopt-defer	closed	M0	Done
+JOBBY-BL-028	28	[JOBBY-BL-028] Sign-in and sign-out, production quality	open	M1	In Review
+JOBBY-BL-029	29	[JOBBY-BL-029] Public visitor tier	open	M9	Proposed
+JOBBY-BL-030	30	[JOBBY-BL-030] Teased results and search carry-over at signup	open	M9	Proposed
+JOBBY-BL-031	31	[JOBBY-BL-031] can() with a two-role claim	open	M6	Proposed
+JOBBY-BL-032	32	[JOBBY-BL-032] Alpha feedback loop	open	M6	Proposed
+JOBBY-BL-033	33	[JOBBY-BL-033] Invite codes for batch control	open	M6	Proposed
+JOBBY-BL-034	34	[JOBBY-BL-034] Session revocation and shorter session	open	M1	Proposed
+JOBBY-BL-035	35	[JOBBY-BL-035] Tenant registry and usage events	open	M6	Proposed
+JOBBY-BL-036	36	[JOBBY-BL-036] Admin console — tenants, usage, monitoring	open	M6	Proposed
+JOBBY-BL-037	37	[JOBBY-BL-037] Admin actions and audit trail	open	M6	Proposed
+JOBBY-BL-038	38	[JOBBY-BL-038] Account index and tenant provisioning	closed	M1	Implemented
+JOBBY-BL-039	39	[JOBBY-BL-039] Account deletion and data export	closed	M1	Done
+JOBBY-BL-044	40	[JOBBY-BL-044] Signup batches, invite seats and live config	closed	M6	Implemented
+JOBBY-BL-045	41	[JOBBY-BL-045] Move OAuth signup onto invite seats	open	M1	Proposed
+JOBBY-BL-046	42	[JOBBY-BL-046] M2 — search profiles per tenant	open	M2	SRC-001
+JOBBY-BL-047	43	[JOBBY-BL-047] M3 — canonical job postings	open	M3	
+JOBBY-BL-048	44	[JOBBY-BL-048] M4 — JobMatch and tenant-private evaluation	open	M4	
+JOBBY-BL-049	45	[JOBBY-BL-049] M7 phase 5 — production bind on the production host	open	M7	SRC-001
+JOBBY-BL-050	46	[JOBBY-BL-050] Multi-tenant MCP server — Connect keys + response contract	closed	M9	Done
+JOBBY-BL-051	47	[JOBBY-BL-051] Workday JD fetcher provider	closed	M3	Done
+JOBBY-BL-052	48	[JOBBY-BL-052] Drushim.il parser provider	closed	M3	Done
+JOBBY-BL-053	49	[JOBBY-BL-053] CV photo crop and resume palettes	closed	M9	Done
+JOBBY-BL-054	50	[JOBBY-BL-054] RBAC management console v2 — roles × permissions × plans	closed	R1	Done
+JOBBY-BL-055	51	[JOBBY-BL-055] MCP resume toolkit — upload / update / download link / generate	closed	R1	Done
+JOBBY-BL-056	52	[JOBBY-BL-056] MCP job feed — fetch jobs as table	closed	R1	Done
+JOBBY-BL-057	53	[JOBBY-BL-057] MCP score write-back — external AI scoring	closed	R1	Done
+JOBBY-BL-058	54	[JOBBY-BL-058] Zero-key member experience — no host AI, no user API keys	closed	R1	Done
+JOBBY-BL-059	55	[JOBBY-BL-059] BrowserMCP QA pipeline — Cursor agent verifies and marks shipped	closed	R1	Done
+JOBBY-BL-060	56	[JOBBY-BL-060] e2e harness — playwright.web.config + test/web-e2e + test:e2e script	closed	R2	Done
+JOBBY-BL-061	57	[JOBBY-BL-061] rbac.spec — RBAC console e2e (#50 coverage)	open	R2	Proposed
+JOBBY-BL-062	58	[JOBBY-BL-062] zero-key.spec — member surfaces e2e (#54 coverage)	closed	R2	Done
+JOBBY-BL-063	59	[JOBBY-BL-063] mcp-tools.spec — tool contracts over raw JSON-RPC (#51/#52/#53)	closed	R2	Done
+JOBBY-BL-064	60	[JOBBY-BL-064] CI wiring — opt-in e2e job	closed	R2	Done
+JOBBY-BL-065	61	[JOBBY-BL-065] RBAC matrix doc + loader hardening	open	R2	Proposed
+JOBBY-BL-067	63	[JOBBY-BL-067] ChatGPT connector over Tailscale Funnel — diagnose + fix	closed	R3	Done
+JOBBY-BL-068	64	[JOBBY-BL-068] Streamable-HTTP/SSE conformance suite	open	R3	Proposed
+JOBBY-BL-069	65	[JOBBY-BL-069] Tool surface completion + docs parity audit	open	R3	Proposed
+JOBBY-BL-070	66	[JOBBY-BL-070] External-vantage e2e + funnel runbook	open	R3	Proposed
+JOBBY-BL-071	67	[JOBBY-BL-071] MCP usage telemetry v2 — per-tool tracking + dashboards	open	R3	Proposed
+JOBBY-BL-072	68	[JOBBY-BL-072] MCP guards layer — validation, size caps, buckets, lockout	open	R3	Proposed
+JOBBY-BL-073	69	[JOBBY-BL-073] Brain store — memory_write/memory_search tools	open	R3	Proposed
+JOBBY-BL-074	70	[JOBBY-BL-074] fetch_page tool with SSRF guard	open	R3	Proposed
+JOBBY-BL-075	71	[JOBBY-BL-075] Connection UX — scopes, expiry, QR one-link	open	R3	Proposed
+JOBBY-BL-076	72	[JOBBY-BL-076] MCP versioning — serverInfo, protocol matrix, changelog	open	R3	Proposed
+JOBBY-BL-077	73	[JOBBY-BL-077] Admin MCP management UI	open	R3	Proposed
+JOBBY-BL-078	74	[JOBBY-BL-078] MCP architecture map doc	open	R3	Proposed
+JOBBY-BL-079	84	[JOBBY-BL-079] Docker-first runtime and deploy stages	open	M7	In Review
+JOBBY-BL-080	85	[JOBBY-BL-080] Attended MCP QA is mandatory before any UI done claim	open	R2	In Review
+JOBBY-BL-081	86	[JOBBY-BL-081] Connect /api/account/mcp must not hang on Appwrite	open	R3	In Review
+JOBBY-BL-082	87	[JOBBY-BL-082] Tailscale Serve/Funnel must map to Compose .ports.yml	open	R3	In Review

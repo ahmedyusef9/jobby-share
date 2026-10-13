@@ -1,0 +1,493 @@
+# qa/features.yml — the coverage denominator.
+#
+# "Full coverage" is meaningless without a written-down list of what
+# "full" is. This file IS that list: every acceptance criterion the
+# product is expected to satisfy, whether or not anything tests it yet.
+#
+# Sources (a criterion may not be invented — it must trace to one):
+#   matrix   deploy/qa/mcp-multi-user-matrix.md
+#   round8   deploy/qa/round-8-prompt.md
+#   rule     .cursor/rules/80-qa-manual.mdc
+#   roadmap  .jobby/ROADMAP.md
+#
+# automated_by: "<spec file>::<unique substring of the test title>".
+# scripts/qa-coverage.mjs resolves every one of these against the real
+# Playwright test list, so a renamed or deleted test breaks the build
+# instead of silently inflating the number.
+#
+# A criterion with neither automated_by nor manual_only is an open GAP.
+#
+# touches: source globs that own the feature's behaviour. When a commit changes
+# one of them, scripts/qa-report.mjs marks that feature's criteria STALE — they
+# were verified against code that no longer exists and must be re-run this
+# round. This is what makes an incremental round honest instead of cumulative.
+
+version: 1
+product: jobby
+release: v0.6.0
+
+risk_order: [critical, high, medium, low]
+
+features:
+
+  - id: MCP-PROTO
+    title: MCP streamable-HTTP transport conformance
+    surface: mcp
+    risk: high
+    source: roadmap
+    touches:
+      - web/src/app/api/mcp/**
+      - web/src/lib/mcp-jsonrpc.ts
+      - web/src/lib/mcp/**
+    criteria:
+      - id: MCP-PROTO-01
+        expected: initialize over application/json returns a spec-conformant result
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::1. initialize over application/json"
+      - id: MCP-PROTO-02
+        expected: a key supplied via Authorization Bearer is accepted
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::2. key via Authorization Bearer"
+      - id: MCP-PROTO-03
+        expected: GET with Accept text/event-stream opens an SSE handshake
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::3. GET /api/mcp with Accept"
+      - id: MCP-PROTO-04
+        expected: POST over SSE returns a message event
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::4. POST over SSE"
+      - id: MCP-PROTO-05
+        expected: tools/list round-trips over SSE
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::5. tools/list round-trips over SSE"
+      - id: MCP-PROTO-06
+        expected: a batch request (array of messages) is accepted
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::6. batch request"
+      - id: MCP-PROTO-07
+        expected: notifications produce an empty 202 with no JSON-RPC body
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::7. notifications produce an empty 202"
+      - id: MCP-PROTO-08
+        expected: an unknown method maps to JSON-RPC method-not-found (-32601)
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::8. unknown method"
+      - id: MCP-PROTO-09
+        expected: an oversized payload is rejected before dispatch
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::9. payload too large"
+      - id: MCP-PROTO-10
+        expected: CORS exposes Mcp-Session-Id on the mcp route
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::10. CORS exposes Mcp-Session-Id"
+      - id: MCP-PROTO-11
+        expected: a stale explicit key gets a JSON 401, not the public initialize fallback
+        level: api
+        automated_by: "test/web-e2e/conformance.spec.mjs::11. stale explicit key"
+
+  - id: ACCESS-L0
+    title: L0 visitor — no session, no key
+    surface: web+mcp
+    risk: critical
+    source: matrix
+    touches:
+      - web/src/auth.ts
+      - web/src/proxy.ts
+      - web/src/lib/auth/**
+      - web/src/app/api/mcp/**
+    criteria:
+      - id: ACCESS-L0-01
+        expected: a signed-out member route redirects to sign-in
+        level: ui
+        automated_by: "test/web-e2e/smoke.spec.mjs::signed-out /pipeline lands on /signin"
+      - id: ACCESS-L0-02
+        expected: signed-out /admin redirects to sign-in and serves no operator surface
+        level: ui
+        automated_by: "test/web-e2e/smoke.spec.mjs::signed-out /admin redirects"
+      - id: ACCESS-L0-05
+        expected: signed-out /admin/rbac redirects to sign-in and serves no operator surface
+        level: ui
+        automated_by: "test/web-e2e/smoke.spec.mjs::signed-out /admin/rbac redirects"
+      - id: ACCESS-L0-03
+        expected: public tools/list succeeds without a key (public by design)
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L0 anonymous can list tools"
+      - id: ACCESS-L0-04
+        expected: tools/call without a key returns 401
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::L0: unkeyed tools/call is rejected"
+
+  - id: ACCESS-L1
+    title: L1 suspended member
+    surface: web+mcp
+    risk: critical
+    source: matrix
+    touches:
+      - web/src/auth.ts
+      - web/src/lib/auth/**
+      - web/src/lib/account-lifecycle.ts
+      - web/src/lib/accounts.ts
+      - web/src/app/api/admin/accounts/**
+    criteria:
+      - id: ACCESS-L1-01
+        expected: suspension makes an existing MCP key return 401 immediately
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L1 suspended member loses MCP access"
+      - id: ACCESS-L1-02
+        expected: a stale session cookie on / lands on the sign-in form, never ERR_TOO_MANY_REDIRECTS
+        level: ui
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L1 suspended member loses MCP access"
+      - id: ACCESS-L1-03
+        expected: after reactivation a fresh sign-in works without deleting cookies by hand
+        level: ui
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L1 suspended member loses MCP access"
+      - id: ACCESS-L1-04
+        expected: /signin itself also settles for a stale cookie (the matrix requires both routes, the test only visits /)
+        level: ui
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L1 suspended member loses MCP access"
+
+  - id: ACCESS-L2-KEYLESS
+    title: L2 free member — zero-key experience
+    surface: web
+    risk: high
+    source: matrix
+    touches:
+      - web/src/app/config/**
+      - web/src/app/account/**
+      - web/src/app/api/clis/**
+      - web/src/lib/clis.ts
+    criteria:
+      - id: ACCESS-L2-KEYLESS-01
+        expected: Config is keyless and points at MCP
+        level: ui
+        automated_by: "test/web-e2e/zero-key.spec.mjs::Config is keyless and points at MCP"
+      - id: ACCESS-L2-KEYLESS-02
+        expected: /api/clis returns the zero-key contract
+        level: api
+        automated_by: "test/web-e2e/zero-key.spec.mjs::/api/clis returns the zero-key contract"
+      - id: ACCESS-L2-KEYLESS-03
+        expected: the assistant setup line points at MCP
+        level: ui
+        automated_by: "test/web-e2e/zero-key.spec.mjs::assistant setup line points at MCP"
+      - id: ACCESS-L2-KEYLESS-04
+        expected: the admin area stays invisible to a member
+        level: ui
+        automated_by: "test/web-e2e/zero-key.spec.mjs::admin area stays invisible"
+      - id: ACCESS-L2-KEYLESS-05
+        expected: member /admin/rbac renders no matrix and no operator nav tabs
+        level: ui
+        automated_by: "test/web-e2e/rbac.spec.mjs::member /admin/rbac renders no matrix"
+      - id: ACCESS-L2-KEYLESS-06
+        expected: member sign-in leaves /signin and never reaches the admin matrix
+        level: ui
+        automated_by: "test/web-e2e/smoke.spec.mjs::member sign-in leaves /signin"
+      - id: ACCESS-L2-KEYLESS-07
+        expected: operator Config keeps the engine chooser and paste-key path
+        level: ui
+        automated_by: "test/web-e2e/zero-key.spec.mjs::operator Config keeps engine chooser"
+
+  - id: ACCESS-L2-SCOPE
+    title: L2 scoped-key enforcement (read / read-write / revoked / expired)
+    surface: mcp
+    risk: critical
+    source: matrix
+    touches:
+      - web/src/lib/mcp-tokens.ts
+      - web/src/lib/key-store.ts
+      - web/src/app/api/account/mcp/**
+      - web/src/app/api/mcp/**
+    criteria:
+      - id: ACCESS-L2-SCOPE-01
+        expected: a read key can call whoami and search_applications
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 read key reads but cannot mutate"
+      - id: ACCESS-L2-SCOPE-02
+        expected: a read key's add_application returns a read-only error and persists nothing
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 read key reads but cannot mutate"
+      - id: ACCESS-L2-SCOPE-03
+        expected: a read key's resume_update is refused
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 read key reads but cannot mutate"
+      - id: ACCESS-L2-SCOPE-04
+        expected: a read key's submit_score is refused
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 read key reads but cannot mutate"
+      - id: ACCESS-L2-SCOPE-05
+        expected: a read-write key mutates only its own tenant
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 read-write key can mutate its own tenant"
+      - id: ACCESS-L2-SCOPE-06
+        expected: a revoked key returns 401 while another key stays live
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 revoked key is rejected"
+      - id: ACCESS-L2-SCOPE-07
+        expected: 'an expired key returns HTTP 401 with the guidance "expired — mint a fresh key under Account → MCP"'
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 expired key returns 401 and frees the live-key cap"
+      - id: ACCESS-L2-SCOPE-08
+        expected: an expired key shows a red `expired` pill in Account → MCP and frees the live-key cap
+        level: ui
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 expired key returns 401 and frees the live-key cap"
+
+  - id: ACCESS-L2-TENANT
+    title: L2 two-member tenant isolation
+    surface: mcp
+    risk: critical
+    source: matrix
+    touches:
+      - web/src/lib/mcp-tokens.ts
+      - web/src/app/api/mcp/**
+      - web/src/lib/appwrite/**
+    criteria:
+      - id: ACCESS-L2-TENANT-01
+        expected: neither tenant can list the other tenant's marker row
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 two-member tokens cannot cross tenant"
+      - id: ACCESS-L2-TENANT-02
+        expected: a tenantId query parameter cannot override the token's own tenant
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 two-member tokens cannot cross tenant"
+      - id: ACCESS-L2-TENANT-03
+        expected: managing another member's key document returns 404 and leaves that key live
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L2 two-member tokens cannot cross tenant"
+
+  - id: ACCESS-L3L4
+    title: L3/L4 plan tiers
+    surface: web+mcp
+    risk: high
+    source: matrix
+    touches:
+      - web/src/lib/entitlements.ts
+      - web/src/lib/mcp-quota.ts
+      - web/src/app/api/admin/accounts/**
+    criteria:
+      - id: ACCESS-L3L4-01
+        expected: the basic plan applies its MCP limit (120)
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L3 and L4 plan changes"
+      - id: ACCESS-L3L4-02
+        expected: the advanced plan applies its MCP limit (500)
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L3 and L4 plan changes"
+      - id: ACCESS-L3L4-03
+        expected: no plan change ever grants admin (/api/admin/accounts stays 403)
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L3 and L4 plan changes"
+      - id: ACCESS-L3L4-04
+        expected: a free member cannot resume_generate over MCP
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::free-plan member cannot resume_generate"
+      - id: ACCESS-L3L4-05
+        expected: a paid member CAN resume_generate (the positive half of the entitlement)
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L3 and L4 plan changes"
+
+  - id: ACCESS-L5
+    title: L5 operator
+    surface: web
+    risk: critical
+    source: matrix
+    touches:
+      - web/src/app/admin/**
+      - web/src/app/api/admin/**
+    criteria:
+      - id: ACCESS-L5-01
+        expected: the operator secret reaches the /admin/rbac matrix
+        level: ui
+        automated_by: "test/web-e2e/smoke.spec.mjs::operator secret reaches the /admin/rbac matrix"
+      - id: ACCESS-L5-02
+        expected: the matrix renders with locked structural rows and operator nav tabs
+        level: ui
+        automated_by: "test/web-e2e/rbac.spec.mjs::matrix renders with locked structural rows"
+      - id: ACCESS-L5-03
+        expected: toggle → Publish → audit row → restore completes
+        level: ui
+        automated_by: "test/web-e2e/rbac.spec.mjs::toggle -> Publish -> audit row -> restore"
+      - id: ACCESS-L5-04
+        expected: a reset-to-defaults path is offered
+        level: ui
+        automated_by: "test/web-e2e/rbac.spec.mjs::reset-to-defaults path is offered"
+      - id: ACCESS-L5-05
+        expected: the operator account listing exposes no raw key and no tenant content
+        level: api
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L5 operator sees account metadata"
+      - id: ACCESS-L5-06
+        expected: aggregate per-account usage is visible to the operator
+        level: ui
+        automated_by: "test/web-e2e/multi-level-mcp.spec.mjs::L5 operator sees account metadata"
+
+  - id: MCP-TOOLS
+    title: MCP tool contracts
+    surface: mcp
+    risk: high
+    source: roadmap
+    touches:
+      - web/src/lib/mcp/**
+      - web/src/lib/mcp-output-contract.ts
+      - web/src/app/api/mcp/**
+      - web/src/lib/cv/**
+    criteria:
+      - id: MCP-TOOLS-01
+        expected: jobs_fetch returns the verbatim table with the full schema and no prose after it
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::jobs_fetch — verbatim table"
+      - id: MCP-TOOLS-02
+        expected: resume + score round-trip on a fresh row
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::resume + score round-trip on a fresh row"
+      - id: MCP-TOOLS-03
+        expected: resume round-trips through a signed download link
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::resume round-trip with signed link"
+      - id: MCP-TOOLS-04
+        expected: a score of 9 is rejected before any write
+        level: api
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::score of 9 is rejected before any write"
+      - id: MCP-TOOLS-05
+        expected: resume_generate is statically gated behind GENERATE_CV
+        level: unit
+        automated_by: "test/web-e2e/mcp-tools.spec.mjs::static tripwire: resume_generate gates GENERATE_CV"
+
+  - id: FUNNEL
+    title: External-vantage public MCP origin
+    surface: mcp
+    risk: high
+    source: matrix
+    touches:
+      - web/src/lib/mcp-public-host.ts
+      - web/src/app/mcp/**
+      - web/src/app/api/mcp/**
+    criteria:
+      - id: FUNNEL-01
+        expected: the SSE handshake works over the public URL
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::GET SSE handshake works over the public URL"
+      - id: FUNNEL-02
+        expected: initialize works through query authentication
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::initialize works through query authentication"
+      - id: FUNNEL-03
+        expected: initialize works through one-link path authentication
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::initialize works through one-link path"
+      - id: FUNNEL-04
+        expected: tools/list works over the public URL
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::tools/list works over the public URL"
+      - id: FUNNEL-05
+        expected: a whoami tools/call works over the public URL
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::whoami tools/call works over the public URL"
+      - id: FUNNEL-06
+        expected: the MCP-only host returns 404 for account, admin and dashboard routes
+        level: api
+        automated_by: "test/web-e2e/funnel.spec.mjs::MCP-only host returns 404"
+
+  - id: JOURNEY
+    title: Multi-turn user journeys
+    surface: web+mcp
+    risk: critical
+    source: rule
+    touches:
+      - web/src/lib/cv/**
+      - web/src/lib/inbox.ts
+      - web/src/app/api/pipeline/**
+      - web/src/app/api/tracker/**
+      - web/src/lib/mcp/**
+    criteria:
+      - id: JOURNEY-01
+        expected: CV lifecycle — upload → patch → generate → signed download
+        level: api
+        automated_by: "test/web-e2e/journeys.spec.mjs::Journey 1"
+      - id: JOURNEY-02
+        expected: job hunt and scoring loop — fetch → score → verify → re-score is idempotent
+        level: api
+        automated_by: "test/web-e2e/journeys.spec.mjs::Journey 2"
+      - id: JOURNEY-03
+        expected: pipeline progression — save → convert to tracker → update status
+        level: api
+        automated_by: "test/web-e2e/journeys.spec.mjs::Journey 3"
+
+  - id: CONNECT-UI
+    title: /connect surface
+    surface: web
+    risk: high
+    source: rule
+    touches:
+      - web/src/app/connect/**
+      - web/src/components/mcp-connect.tsx
+      - web/src/lib/mcp-qr.ts
+      - web/src/app/api/account/mcp/**
+    criteria:
+      - id: CONNECT-UI-01
+        expected: first paint waits for the live key and KPI data (no false `uncapped` or `No live key yet`)
+        level: ui
+        automated_by: "test/web-e2e/zero-key.spec.mjs::Connect first paint waits for live key"
+      - id: CONNECT-UI-02
+        expected: Show QR renders a PNG data URL
+        level: ui
+        automated_by: "test/web-e2e/connect.spec.mjs::Show QR renders a PNG data URL"
+      - id: CONNECT-UI-03
+        expected: a minted token is shown exactly once and never again
+        level: ui
+        automated_by: "test/web-e2e/connect.spec.mjs::minted token is shown exactly once"
+      - id: CONNECT-UI-04
+        expected: each key row shows its scope, expiry and status
+        level: ui
+        automated_by: "test/web-e2e/connect.spec.mjs::minted token is shown exactly once"
+      - id: CONNECT-UI-05
+        expected: up to 5 named live keys; Add keeps existing keys, Rotate all retires them
+        level: ui
+        automated_by: "test/web-e2e/connect.spec.mjs::key lifecycle keeps named keys and enforces rotation and cap"
+      - id: CONNECT-UI-06
+        expected: /connect has no serious or critical axe violation
+        level: ui
+        automated_by: "test/web-e2e/connect.spec.mjs::no serious or critical axe violation"
+
+  - id: EXTERNAL-CLIENT
+    title: Real third-party MCP clients
+    surface: mcp
+    risk: critical
+    source: rule
+    touches:
+      - web/src/app/api/mcp/**
+      - web/src/lib/mcp-public-host.ts
+      - web/src/lib/mcp-instructions.ts
+    criteria:
+      - id: EXTERNAL-CLIENT-01
+        expected: ChatGPT connects via /mcp/<key> and completes initialize, tools/list, whoami, a read and a permitted write
+        level: manual
+        manual_only: true
+        manual_evidence: "deploy/qa/round-8-prompt.md §5.3"
+      - id: EXTERNAL-CLIENT-02
+        expected: Cursor connects and completes the same sequence
+        level: manual
+        manual_only: true
+        manual_evidence: "deploy/qa/round-8-prompt.md §5.3"
+      - id: EXTERNAL-CLIENT-03
+        expected: Claude.ai connects over port 443 and completes the same sequence
+        level: manual
+        manual_only: true
+        manual_evidence: "deploy/qa/round-8-prompt.md §5.3"
+      - id: EXTERNAL-CLIENT-04
+        expected: revoking the key while a client stays open fails that client's next call
+        level: manual
+        manual_only: true
+        manual_evidence: "deploy/qa/round-8-prompt.md §5.3"
+
+  - id: PERF
+    title: Performance and load
+    surface: mcp+web
+    risk: medium
+    source: roadmap
+    criteria:
+      - id: PERF-01
+        expected: MCP tools/call p95 latency stays under an agreed SLO
+        level: api
+        automated_by: "test/web-e2e/performance.spec.mjs::MCP tools/call p95 stays inside the load SLO"
+      - id: PERF-02
+        expected: /connect Web Vitals stay inside a budget
+        level: ui
+        automated_by: "test/web-e2e/performance.spec.mjs::/connect Web Vitals stay inside the versioned budget"

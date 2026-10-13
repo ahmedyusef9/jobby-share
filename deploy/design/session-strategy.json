@@ -1,0 +1,59 @@
+{
+  "id": "JOBBY-BL-034",
+  "title": "Session strategy — JWT kept, revocation added",
+  "status": "decided",
+  "decided_at": "2026-08-15",
+  "detail": "answers 'what about JWT?' — see growth-and-access.md and rbac.json",
+  "current_state_verified": {
+    "strategy": "JWT — web/src/auth.ts sets no session.strategy and registers no adapter, so Auth.js defaults to JWT",
+    "encrypted_not_merely_signed": "@auth/core jwt.ts encrypts with jose EncryptJWT, alg 'dir', enc 'A256CBC-HS512' — a JWE, so tenantId is unreadable without AUTH_SECRET. Confirmed against Auth.js source (lockfile @auth/core 0.41.0); web/node_modules/@auth/core was not present on this machine",
+    "max_age_default": "30 days (DEFAULT_MAX_AGE = 30 * 24 * 60 * 60 in packages/core/src/jwt.ts)",
+    "cookie": "httpOnly, sameSite lax; name is __Secure-authjs.session-token when useSecureCookies is true (HTTPS)",
+    "claims_today": "custom claim is tenantId only — Auth.js also copies name/email/picture/sub; no plan, role, or key material"
+  },
+  "decision": "Keep the JWT strategy. Do not adopt database sessions. Add a Redis-backed session version for revocation, shorten maxAge, and keep authority out of the token.",
+  "rules": [
+    {
+      "rule": "The token carries identity, never authority",
+      "detail": "tenantId is identity and is immutable per account, so it belongs in the token. Plan, role and key-attached are authority: look them up server-side per request, which is where the gate lives anyway. A token that carries entitlements is a token that lags reality.",
+      "status_today": "already satisfied — only tenantId is in the token; keep it that way as plans arrive"
+    },
+    {
+      "rule": "Sessions must be revocable",
+      "detail": "A JWT is valid until it expires. Signing out deletes the client's cookie; a copied cookie keeps working. For a product where a session can spend the user's API budget, that is not acceptable.",
+      "mechanism": "store sv:{tenantId} in Redis (already in the stack for BullMQ); stamp sv into the token at sign-in; compare per request; bump to invalidate every session for that account instantly",
+      "when_redis_absent": "if REDIS_URL is unset (local operator without the compose stack), skip the sv check — same gate as queueEnabled(). Deployed environments must set REDIS_URL; do not fail open there",
+      "buys": ["sign out everywhere", "emergency revocation after a suspected key compromise", "forced re-login on plan or role change"]
+    },
+    {
+      "rule": "The revocation check belongs in withTenant() / withTenantPage(), not the proxy",
+      "detail": "Correction vs an earlier draft: this app is Next 16.2.11, and proxy.ts is Node.js (edge is not supported on proxy). A TCP Redis client would work there. Put the check in withTenant anyway — it is the gate that binds ALS and that API routes plus pages actually go through; the proxy is a redirect convenience whose matcher can miss paths. Do not add a Redis round-trip to every matched request just to fail closed twice.",
+      "confirmed_against_docs_2026_08_15": {
+        "runtime": "Next.js docs, proxy.js reference: 'Proxy defaults to using the Node.js runtime. The runtime config option is not available in Proxy files. Setting the runtime config option in Proxy will throw an error.' Version history: v16.0.0 'Middleware is deprecated and renamed to Proxy. Proxy defaults to the Node.js runtime.' The earlier edge claim was true for Next <=15 middleware, not for this app.",
+        "stronger_reason_than_runtime": "The same page states that Server Functions are not separate routes: they are POSTs to the route where they are used, so a matcher change or a refactor that moves one can silently remove proxy coverage — 'Always verify authentication and authorization inside each Server Function rather than relying on Proxy alone.' That is Next's own guidance for exactly the pattern withTenant() implements.",
+        "second_reason": "Docs also warn that proxy 'is meant to be invoked separately of your render code and in optimized cases deployed to your CDN', so it should not depend on shared modules or globals — another argument against putting a stateful Redis check there.",
+        "applicability_now": "This app currently has no 'use server' files, so the Server Function hazard is latent rather than live; it becomes real the first time an action is added.",
+        "source": "https://nextjs.org/docs/app/api-reference/file-conventions/proxy"
+      }
+    },
+    {
+      "rule": "Shorten the session",
+      "detail": "30 days is long for a session that unlocks spending. 7 days with rolling refresh (maxAge + updateAge) is the better default."
+    },
+    {
+      "rule": "AUTH_SECRET is the root of the session's confidentiality",
+      "detail": "The JWE is encrypted with it. Treat it like the KMS master key: platform variable, never on the data volume, never in git. Rotating it invalidates every session, which is itself a blunt but effective kill switch."
+    }
+  ],
+  "future_api_tokens": {
+    "rule": "User-facing API tokens (the later 'export/API' capability) must be opaque random strings, hashed at rest like passwords — never JWTs",
+    "why": "they are long-lived, user-visible and must be individually revocable, which is precisely what JWTs are bad at"
+  },
+  "rejected": [
+    { "option": "database sessions via an Auth.js adapter", "why": "needs an adapter and a store plus a per-request read, for a benefit the session-version check already provides" },
+    { "option": "PASETO or a custom token format", "why": "Auth.js does not support it; the current JWE is already encrypted with a vetted library, and rolling our own auth token is a downgrade" },
+    { "option": "putting the provider API key in the session token", "why": "that places a live credential in a cookie; keys stay server-side, encrypted, and are fetched per job" },
+    { "option": "putting plan/entitlements in the token to save a lookup", "why": "stale authority; the gate is server-side regardless, so the lookup is not saved" }
+  ],
+  "fold_into": "JOBBY-BL-021 — session version + 7-day maxAge are small additions to auth.ts / withTenant(); revoking a session is meaningless while spawned CLIs still inherit process.env"
+}

@@ -1,0 +1,50 @@
+# Project adapter for the reusable qa-manual-automation skill.
+version: 1
+product: jobby
+
+requirements:
+  manifest: qa/features.yml
+  performance_budgets: qa/performance-budgets.yml
+  manual_ledger: qa/runs
+  reports: qa/reports
+
+browser:
+  attended_mcp: playwright
+  attended_mode: extension
+  mcp_config: .cursor/mcp.json
+  base_url_env: JOBBY_E2E_BASE_URL
+  default_base_url: http://localhost:4700
+  external_url_env: JOBBY_MCP_PUBLIC_URL
+
+automation:
+  runner: playwright
+  config: playwright.web.config.mjs
+  test_dir: test/web-e2e
+  run_report: test-results/web-e2e-report.json
+  commands:
+    list: npx playwright test --config=playwright.web.config.mjs --list
+    test: npm run test:e2e
+    coverage: npm run qa:coverage
+    evidence: npm run qa:evidence
+    report: npm run qa:report
+
+credentials:
+  contract: test/web-e2e/credentials.mjs
+  required_env:
+    - JOBBY_E2E_EMAIL
+    - JOBBY_E2E_PASSWORD
+  optional_env:
+    - JOBBY_E2E_MEMBER_B_EMAIL
+    - JOBBY_E2E_MEMBER_B_PASSWORD
+    - JOBBY_OPERATOR_SECRET
+    - JOBBY_E2E_MCP_KEY
+
+safety:
+  allowed_origins:
+    - http://localhost:4700
+    - staging
+  forbidden_terminal_actions:
+    - submit application
+    - send message or email
+    - purchase
+    - delete real user data

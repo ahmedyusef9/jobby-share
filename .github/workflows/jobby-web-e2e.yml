@@ -1,0 +1,74 @@
+name: jobby-web-e2e
+
+# Opt-in UI e2e gate (R2 / BL-064, BL-070). Runs the Playwright suite against
+# the configured public Funnel URL. Dispatch manually before tagging a release.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: jobby-web-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    runs-on: [self-hosted, jobby]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci || npm install --no-audit --no-fund
+
+      - name: Ensure chromium present
+        run: npx playwright install chromium
+
+      - name: Wait for stack
+        env:
+          JOBBY_E2E_BASE_URL: ${{ vars.JOBBY_E2E_BASE_URL }}
+          JOBBY_MCP_PUBLIC_URL: ${{ vars.JOBBY_MCP_PUBLIC_URL }}
+        run: |
+          [ -n "$JOBBY_E2E_BASE_URL" ] || { echo "::error::set repository variable JOBBY_E2E_BASE_URL to the full-app Funnel origin"; exit 1; }
+          [ -n "$JOBBY_MCP_PUBLIC_URL" ] || { echo "::error::set repository variable JOBBY_MCP_PUBLIC_URL to the distinct MCP-only Funnel origin"; exit 1; }
+          [ "$JOBBY_E2E_BASE_URL" != "$JOBBY_MCP_PUBLIC_URL" ] || { echo "::error::full-app and MCP-only origins must be different"; exit 1; }
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$JOBBY_E2E_BASE_URL" || true)
+            [ "$code" != "000" ] && echo "stack up ($code)" && exit 0
+            sleep 2
+          done
+          echo "::error::stack not reachable at $JOBBY_E2E_BASE_URL"
+          exit 1
+
+      - name: Run e2e suite
+        env:
+          JOBBY_E2E_BASE_URL: ${{ vars.JOBBY_E2E_BASE_URL }}
+          JOBBY_MCP_PUBLIC_URL: ${{ vars.JOBBY_MCP_PUBLIC_URL }}
+          JOBBY_OPERATOR_SECRET: ${{ secrets.JOBBY_OPERATOR_SECRET }}
+          JOBBY_E2E_EMAIL: ${{ secrets.JOBBY_E2E_EMAIL }}
+          JOBBY_E2E_PASSWORD: ${{ secrets.JOBBY_E2E_PASSWORD }}
+          JOBBY_E2E_MEMBER_B_EMAIL: ${{ secrets.JOBBY_E2E_MEMBER_B_EMAIL }}
+          JOBBY_E2E_MEMBER_B_PASSWORD: ${{ secrets.JOBBY_E2E_MEMBER_B_PASSWORD }}
+          JOBBY_E2E_MCP_KEY: ${{ secrets.JOBBY_E2E_MCP_KEY }}
+          # scripts/qa-expire-key.mjs (multi-level-mcp.spec.mjs:206) talks to
+          # Appwrite directly, not through the deployed app — it needs its own
+          # credentials since this runner's checkout has no deploy/.env.
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: npm run test:e2e
+
+      - name: Gate executed feature coverage
+        if: always()
+        run: node scripts/qa-coverage.mjs --run-report test-results/web-e2e-report.json --min 100 --summary
+
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-results
+          path: test-results/
+          retention-days: 7

@@ -1,0 +1,10 @@
+Source ID,Source,Type,Use in Backlog,URL / File,Trust Level,Last Verified,Notes
+SRC-001,jobby working tree / conversation implementation,Repository / Code,Yes,~/ahmad-apps/jobby,Repository / Code,2026-08-12,POC branding + deploy work in this checkout
+SRC-002,Carbon Emerald branding plan,Repository / Code,Yes,~/.cursor/plans/carbon_emerald_branding_55afa90f.plan.md,Primary / Authoritative,2026-08-12,Completed branding scope
+SRC-003,Railway multi-container POC plan,Repository / Code,Yes,~/.cursor/plans/railway_container_poc_4cdb6e5d.plan.md,Primary / Authoritative,2026-08-12,Local-first container POC; volume/tenant deferred
+SRC-004,Railway MCP account access,Vendor Documentation,Yes,user-railway MCP whoami,Vendor Documentation,2026-08-12,Logged in; deploy gated on local smoke
+SRC-005,User request: AI CV chat on CV editor tab,Repository / Code,Yes,Cursor chat 2026-08-13 CV editor chatbox,Primary / Authoritative,2026-08-13,Chat to modify cv.md in UI; Accept then Save; keep Export PDF / version history
+SRC-006,"User request: multi-tenancy, plan gating and API-key custody",Repository / Code,Yes,deploy/design/multi-tenancy.md,Primary / Authoritative,2026-08-13,"Shared vs private data plane, trial/basic/advanced gating, per-tenant provider key storage"
+SRC-007,"User request: signup funnel, gating, RBAC, pricing and alpha batches",Repository / Code,Yes,deploy/design/growth-and-access.md,Primary / Authoritative,2026-08-15,Free teased search drives signup; scoring is BYO-key only in alpha; no platform spend
+SRC-008,"User request: full management UI for tenants, usage and monitoring",Repository / Code,Yes,deploy/design/admin-console.md,Primary / Authoritative,2026-08-15,"Trace tenants and watch usage from a web dashboard; metadata only, never job-search content"
+SRC-009,"User request: full account flow — signup, login, logout, key storage, deletion",Repository / Code,Yes,deploy/design/account-lifecycle.md,Primary / Authoritative,2026-08-16,Design the whole lifecycle rather than patching stages one at a time

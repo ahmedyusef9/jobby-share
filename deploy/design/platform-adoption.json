@@ -1,0 +1,79 @@
+{
+  "id": "JOBBY-BL-027",
+  "title": "Platform infrastructure adopt/defer — gateway, identity platform, secrets manager, cert manager",
+  "status": "decided",
+  "decided_at": "2026-08-14",
+  "question": "Should BL-020..026 be built on Kong, a tenant/identity platform, Vault, or cert-manager instead of in-app?",
+  "decision": "Defer all four. Keep Auth.js + in-app tenant context + node:crypto envelope encryption. None of these products enforces the boundary jobby actually needs.",
+  "framing": "The tenancy boundary is INSIDE the process — AsyncLocalStorage -> tenantRoot() -> filesystem, plus a spawned agent CLI that can read the filesystem. A gateway, an identity SaaS, a secrets cluster and a cert controller all sit outside that boundary. Buying any of them would feel like progress on tenancy while leaving the P0 risks (BL-025 sandboxing, BL-026 toolchain root) untouched.",
+  "candidates": {
+    "kong": {
+      "verdict": "defer",
+      "license": "Apache-2.0, actively maintained",
+      "what_it_would_do": "edge routing, rate limiting, API keys, per-consumer quotas",
+      "why_not_now": [
+        "Category error for the API-key question (asked 2026-08-15): a gateway fronts HTTP, but the keys are decrypted inside the app and handed to a spawned process. Kong cannot protect a secret that lives behind it, and RBAC tools gate who may call what, while our problem is what a spawned process can reach.",
+        "One Next.js app plus one worker — a gateway in front of a single HTTP surface adds a hop and a second control plane for no routing value",
+        "Railway already terminates TLS and does edge routing",
+        "Cannot enforce 'this request may only read /data/tenants/{id}' — the leak surface is behind it",
+        "Entitlements are designed as in-app requireFeature/consume (BL-023), which needs per-meter business logic a gateway plugin does not express"
+      ],
+      "reconsider_when": "A public API ships (BL-023 advanced tier), or a third backend service appears and routing/rate-limiting genuinely centralizes"
+    },
+    "firebase_auth": {
+      "verdict": "defer",
+      "evaluated": "2026-08-15",
+      "cost_is_not_the_argument": "Email, social and anonymous sign-in are free to 50,000 MAU on both Spark and Blaze; past that it starts around $0.0055/MAU. Phone/SMS is never free ($0.01 US up to ~$0.46 elsewhere) and enterprise SSO is $0.015/MAU after 50 free. At alpha scale Firebase would cost nothing.",
+      "why_not": [
+        "Auth.js is already built, browser-verified and binds tenantId to the session (BL-020, BL-028) — swapping trades a working implementation for no security gain",
+        "It puts a Google dependency in the login path and creates a second identity system to reconcile with tenantId",
+        "It buys features we do not use: the alpha is OAuth plus an operator secret, not email/password with verification, reset and MFA"
+      ],
+      "when_it_would_be_right": "If email/password with verification, password reset and MFA is wanted without building any of it — then Firebase or Clerk is a genuine saving",
+      "sources": [
+        "https://blog.logto.io/firebase-authentication-pricing",
+        "https://supertokens.com/blog/firebase-pricing"
+      ]
+    },
+    "identity_platform": {
+      "verdict": "defer",
+      "options": "Clerk, WorkOS, Frontegg, Auth0 Organizations",
+      "note": "Commercial platforms, not open source (Clerk ships only its client SDK under MIT); priced per MAU",
+      "why_not_now": [
+        "BL-020 already binds tenantId to an Auth.js session; the modelling work these platforms sell is done",
+        "Current tier plan is 1 seat on Basic — no orgs, invites, or SSO to buy",
+        "Identity is the load-bearing security boundary; a per-MAU vendor there is a cost and a dependency at pre-revenue"
+      ],
+      "exit_path_already_good": "tenantId is a single session claim, so swapping the provider touches auth.ts and nothing else",
+      "reconsider_when": "Selling team seats or an enterprise buyer requires SSO/SCIM — WorkOS is the narrowest fit for that specific need"
+    },
+    "vault_openbao": {
+      "verdict": "defer",
+      "license": "HashiCorp Vault is BUSL-1.1 since Aug 2023 (not OSI open source, IBM-owned); OpenBao is the MPL-2.0 Linux Foundation fork",
+      "what_it_would_do": "Transit engine as encryption-as-a-service so jobby never holds the DEK",
+      "why_not_now": [
+        "Already rejected in secrets-custody.json: an extra failure domain at POC scale",
+        "Stateful HA service with unseal, storage backend and backup — if it is down, no tenant can run a scored job",
+        "The real secrets defect is code discipline (clis.ts:104 spreads process.env into every spawn), which no product fixes"
+      ],
+      "middle_ground_if_env_var_master_key_is_unacceptable": "Managed cloud KMS (AWS KMS or GCP KMS) — pay per call, nothing to operate, and it removes the master key from the platform env. Prefer this over self-hosting Vault; the BL-021 interface decryptForJob(tenantId, provider) makes it a one-implementation swap.",
+      "reconsider_when": "Compliance mandates centralized secret custody and audit, or the stack already runs Kubernetes"
+    },
+    "cert_manager": {
+      "verdict": "not applicable",
+      "license": "Apache-2.0, CNCF graduated",
+      "why": "It is a Kubernetes controller reconciling Certificate/Issuer CRDs. There is no Kubernetes in this stack — deployment is Docker Compose and Railway, and Railway provisions and renews TLS for custom domains at its own edge.",
+      "reconsider_when": "Jobby moves to self-managed Kubernetes"
+    }
+  },
+  "verification": {
+    "no_kubernetes": "grep for kubernetes/kubectl/kong/cert-manager across the repo matches only job-search skill vocabulary (analyze-patterns.mjs, upskill.mjs, jd-skill-gap.mjs, modes/*) — no manifests, no Helm, no cluster",
+    "auth_already_chosen": "next-auth ^5.0.0-beta.30 is a dependency on feature/JOBBY-BL-020-tenant-root @ 7eb0f54",
+    "secrets_already_decided": "deploy/design/secrets-custody.json alternatives_rejected already lists Vault/Infisical as deferred"
+  },
+  "what_to_do_instead": [
+    "JOBBY-BL-026 — tenant-aware root for the .mjs toolchain (P0, blocking the BL-020 rollout)",
+    "JOBBY-BL-021 — encrypted key store + allowlisted child env (P0, gate before signup)",
+    "JOBBY-BL-025 — sandboxed per-job agent execution (the actual top risk)"
+  ]
+}

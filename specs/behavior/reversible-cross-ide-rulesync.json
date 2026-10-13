@@ -1,0 +1,270 @@
+{
+  "schema_version": "1.0",
+  "spec_id": "reversible-cross-ide-rulesync",
+  "title": "Reversible cross-IDE Rulesync context pilot",
+  "objective": "A reversible Rulesync-generated context set for Jobby development only, with static gates before any model sessions and no product/UI deployment.",
+  "status": "draft",
+  "requirements": [
+    {
+      "id": "REQ-RS-001",
+      "statement": "Canonical .rulesync source owns generation. Native Cursor/Codex/Claude discovery owns loading. No runtime context manager, MCP product changes, global config, or production dependencies.",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #89 JOBBY-BL-088 approved design"
+      }
+    },
+    {
+      "id": "REQ-RS-002",
+      "statement": "Generation is reproducible from a pinned public CLI. Dry-run/check produce no unauthorized outputs. Content hashes and a duplicate-identity inventory exist.",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #89 acceptance"
+      }
+    },
+    {
+      "id": "REQ-RS-003",
+      "statement": "Static tests fail closed on missing references, cycles, and path escapes, and cover ordinary vs forced updater pruning plus rollback hash restoration. An ordinary (non-force) prune never removes a tracked fork-only skill; forcing a prune that removes one produces a deletion report naming each removed path.",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #89 acceptance and risks"
+      }
+    },
+    {
+      "id": "REQ-RS-004",
+      "statement": "No push, merge, or adoption before the listed gates pass. The work stays on an isolated worktree from the named base commit.",
+      "origin": {
+        "kind": "reference",
+        "reference": "GitHub #89 isolation"
+      }
+    },
+    {
+      "id": "REQ-RS-005",
+      "statement": "The >=50% repository instruction payload reduction is measured in tokens, per client (Cursor/Codex/Claude counted separately), plus a combined total reported alongside — never bytes, never a single blended number in place of the per-client figures. Only files the client actually loads as repository instructions count toward the baseline or the candidate.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — resolves open question 1"
+      }
+    },
+    {
+      "id": "REQ-RS-006",
+      "statement": "Full-task completion quality/usage is out of scope for this pilot and is recorded as explicitly unmeasured, not inferred from the payload-reduction figures. A separate future evaluation may measure it; this pilot's acceptance never depends on it.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — resolves open question 2"
+      }
+    },
+    {
+      "id": "REQ-RS-007",
+      "statement": "The Jobby-specific QA skill is namespaced distinctly from any generic QA skill (e.g. `jobby/qa-manual-automation`), so rulesync generation never has to pick a winner between them. If generation ever produces two skills that would resolve to the same identity, that is a fail-closed error, not a silent overwrite.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — resolves open question 3"
+      }
+    },
+    {
+      "id": "REQ-RS-008",
+      "statement": "A source overlay applies as a safe merge into its target file. If a safe merge cannot be computed (conflicting regions, unrecognized target structure), generation fails closed rather than silently replacing the whole file. Whole-file replacement is available only behind an explicit per-overlay opt-in.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — resolves the overlay-replacement risk named in intake"
+      }
+    },
+    {
+      "id": "REQ-RS-009",
+      "statement": "Codex's topic-based rule grouping survives generation via headings or metadata in the generated output, not a flattened list. A round-trip test proves no grouping is lost between the canonical source and the generated Codex output.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — resolves the Codex topic-flattening risk named in intake"
+      }
+    },
+    {
+      "id": "REQ-RS-010",
+      "statement": "Token counting is deterministic and offline: js-tiktoken@1.0.21 (pinned devDependency, lockfile-verified), o200k_base encoding, no network call and no model inference in the loop. Per client, the counted set is a SPECIFIED FILE-SET PROXY, not a verified claim of what the client always loads at runtime — Claude Code: CLAUDE.md plus every file it @-imports, recursively; Cursor: .cursorrules if present plus every .cursor/rules/*.mdc file whose frontmatter sets alwaysApply: true; Codex: AGENTS.md plus CODEX.md if present. Conditionally-loaded content (glob/description-gated Cursor rules, on-demand Claude skills) is excluded from both baseline and candidate by the same specified rule. Files are concatenated in the client's own load order with a single newline between files, then tokenized as one string; the count is encoding.encode(text).length. Known inaccuracies against real client behavior, not yet resolved by session evidence: official Codex guidance selects at most one instruction file per directory rather than always loading both AGENTS.md and CODEX.md together; Claude Code rules with no `paths`/glob restriction may load without a CLAUDE.md @-import, so the true load set for the generated .claude/rules/*.md files (which currently carry `paths`) depends on observed client behavior, not this algorithm. Report every number from this method as 'specified file-set proxy', never as measured session usage, and never as a billable/cached model-token cost, until the 24-session matrix (REQ-RS-006's deferred full-task usage) confirms or corrects it per client.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — reproducible counting method; corrected 2026-09-25 against observed rulesync/Codex/Claude Code loading behavior (see https://learn.chatgpt.com/docs/agent-configuration/agents-md and https://code.claude.com/docs/en/memory)"
+      }
+    },
+    {
+      "id": "REQ-RS-011",
+      "statement": "The pass/fail gate is evaluated per client: for each of Cursor, Codex, and Claude independently, reduction_pct = (baseline_tokens - candidate_tokens) / baseline_tokens must be >= 0.50. All three must individually clear the threshold; one client's larger reduction never offsets another's shortfall. The combined total across all three clients is computed and reported for visibility only and is never itself the pass condition. A client whose baseline_tokens is 0 is reported as not_applicable and excluded from the gate rather than causing a divide-by-zero or an automatic pass.",
+      "origin": {
+        "kind": "decision",
+        "reference": "Owner decision, 2026-09-25 — threshold assertion semantics"
+      }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "SCN-RS-001",
+      "title": "Authorized generation only",
+      "requirement_ids": ["REQ-RS-001", "REQ-RS-002"],
+      "given": [
+        "The pinned Rulesync CLI and the canonical .rulesync source are present."
+      ],
+      "when": "Generation or dry-run/check runs.",
+      "then": [
+        "Outputs are limited to the declared ownership set.",
+        "No unauthorized files are written."
+      ]
+    },
+    {
+      "id": "SCN-RS-002",
+      "title": "Missing references and cycles fail closed",
+      "requirement_ids": ["REQ-RS-003"],
+      "given": [
+        "A source overlay is missing a required reference or contains a cycle or escape."
+      ],
+      "when": "The static check runs.",
+      "then": [
+        "The check fails.",
+        "Adoption stays blocked."
+      ]
+    },
+    {
+      "id": "SCN-RS-003",
+      "title": "Ordinary updater prune keeps fork-only skills",
+      "requirement_ids": ["REQ-RS-003"],
+      "given": [
+        "Tracked fork-only skills sit outside updater-owned paths."
+      ],
+      "when": "An ordinary (non-force) updater prune runs.",
+      "then": [
+        "Those skills remain.",
+        "A forced prune is a separate, explicit case."
+      ]
+    },
+    {
+      "id": "SCN-RS-003B",
+      "title": "Forced prune of fork-only skills produces a deletion report",
+      "requirement_ids": ["REQ-RS-003"],
+      "given": [
+        "Tracked fork-only skills sit outside updater-owned paths."
+      ],
+      "when": "A forced (--force) updater prune removes one or more of them.",
+      "then": [
+        "A deletion report lists each removed path by name.",
+        "Nothing is removed silently."
+      ]
+    },
+    {
+      "id": "SCN-RS-004",
+      "title": "Rollback restores hashes",
+      "requirement_ids": ["REQ-RS-003"],
+      "given": [
+        "A prior generation snapshot and its content hashes exist."
+      ],
+      "when": "Rollback runs.",
+      "then": [
+        "Restored files match the prior hashes."
+      ]
+    },
+    {
+      "id": "SCN-RS-005",
+      "title": "Isolation before adoption",
+      "requirement_ids": ["REQ-RS-004"],
+      "given": [
+        "Gates are incomplete or failing."
+      ],
+      "when": "Someone would push, merge, or adopt the candidate.",
+      "then": [
+        "Adoption stays blocked.",
+        "The original checkout is unchanged."
+      ]
+    },
+    {
+      "id": "SCN-RS-006",
+      "title": "Per-client token reduction reported separately from the combined total",
+      "requirement_ids": ["REQ-RS-005", "REQ-RS-010"],
+      "given": [
+        "A baseline and a candidate instruction set exist for Cursor, Codex, and Claude."
+      ],
+      "when": "The payload-reduction measurement runs.",
+      "then": [
+        "Each client's token reduction is reported individually.",
+        "A combined total is reported alongside, never in place of the per-client figures.",
+        "Files excluded from the specified file-set proxy (REQ-RS-010) are excluded from both baseline and candidate counts.",
+        "The report is labeled a specified file-set proxy, never claimed as measured session usage or a verified native-loading count, until session evidence (REQ-RS-006) confirms it per client."
+      ]
+    },
+    {
+      "id": "SCN-RS-007",
+      "title": "Full-task usage stays explicitly unmeasured",
+      "requirement_ids": ["REQ-RS-006"],
+      "given": [
+        "The 24 baseline/candidate sessions have run."
+      ],
+      "when": "Results are recorded.",
+      "then": [
+        "Full-task completion quality is marked unmeasured, not inferred from token reduction.",
+        "Pilot acceptance does not depend on a full-task usage figure."
+      ]
+    },
+    {
+      "id": "SCN-RS-008",
+      "title": "Jobby QA skill identity never collides with a generic QA skill",
+      "requirement_ids": ["REQ-RS-007"],
+      "given": [
+        "Both a generic QA skill and the Jobby-specific QA skill are present as generation inputs."
+      ],
+      "when": "Generation runs.",
+      "then": [
+        "The Jobby skill is emitted under its namespaced identity (e.g. jobby/qa-manual-automation).",
+        "If any two generated skills would still resolve to the same identity, generation fails closed instead of picking a winner."
+      ]
+    },
+    {
+      "id": "SCN-RS-009",
+      "title": "Overlay merge failure fails closed instead of replacing the file",
+      "requirement_ids": ["REQ-RS-008"],
+      "given": [
+        "A source overlay's target region cannot be safely merged (conflict or unrecognized structure)."
+      ],
+      "when": "Generation runs without an explicit whole-file-replacement opt-in for that overlay.",
+      "then": [
+        "Generation fails closed.",
+        "The target file is not replaced wholesale."
+      ]
+    },
+    {
+      "id": "SCN-RS-010",
+      "title": "Codex topic grouping survives a round trip",
+      "requirement_ids": ["REQ-RS-009"],
+      "given": [
+        "The canonical source defines Codex rules grouped by topic."
+      ],
+      "when": "Generation produces the Codex output and the round-trip test runs.",
+      "then": [
+        "Every topic grouping in the source is identifiable in the generated output via headings or metadata.",
+        "No topic's rules are flattened into an unlabeled list."
+      ]
+    },
+    {
+      "id": "SCN-RS-011",
+      "title": "Token count is deterministic across repeated runs",
+      "requirement_ids": ["REQ-RS-010"],
+      "given": [
+        "The same file set and the same pinned js-tiktoken version."
+      ],
+      "when": "The counting script runs twice, offline, with no changes to the files in between.",
+      "then": [
+        "Both runs produce byte-identical token counts.",
+        "No network call is made."
+      ]
+    },
+    {
+      "id": "SCN-RS-012",
+      "title": "Per-client gate is independent; combined total cannot rescue a failing client",
+      "requirement_ids": ["REQ-RS-011"],
+      "given": [
+        "Two clients individually clear 50% reduction and one client is at 30%, but the combined total across all three is above 50%."
+      ],
+      "when": "The threshold assertion evaluates.",
+      "then": [
+        "The gate reports FAIL, because the 30% client did not individually clear the threshold.",
+        "The combined total is shown in the report but does not change the PASS/FAIL outcome."
+      ]
+    }
+  ],
+  "open_questions": []
+}

@@ -1,0 +1,65 @@
+# jobby web — production Next.js image (Railway / compose)
+# Build context: repository root
+FROM node:22-bookworm-slim AS deps
+WORKDIR /app/web
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci
+
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY --from=deps /app/web/node_modules ./web/node_modules
+COPY web ./web
+# Shared toolchain modules. web/src/lib/{child-env,key-store,accounts,entitlements,
+# account-lifecycle}.ts re-export from ../../../scripts/*.mjs so the Next server and
+# the worker cannot drift. Those files live outside web/, so without this the build
+# fails with "Module not found" for every one of them.
+COPY scripts ./scripts
+# check_liveness (BL-085) statically imports liveness-api.mjs, a root-level
+# module (not under scripts/), plus its own ./user-agent.mjs dependency and
+# sibling .d.mts types — same "Module not found" failure mode as scripts/
+# above, just for a file scripts/ doesn't cover.
+COPY liveness-api.mjs liveness-api.d.mts user-agent.mjs ./
+# Standalone needs the parent checkout for CAREER_OPS_ROOT resolution at build time
+# only for types; runtime uses CAREER_OPS_ROOT env.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    DOCKER_BUILD=1 \
+    JOBBY_STANDALONE=1
+WORKDIR /app/web
+# Webpack: Turbopack still NFT-traces some filesystem routes under Docker,
+# and next-auth's next/server import fails as an external ESM module.
+RUN npx next build --webpack
+
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    CAREER_OPS_ROOT=/data \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+# OpenCode CLI (primary in-container engine)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git python3 python3-venv python3-pip libgomp1 \
+ && python3 -m venv /opt/jobspy \
+ && /opt/jobspy/bin/pip install --no-cache-dir python-jobspy \
+ && /opt/jobspy/bin/python -c "from jobspy import scrape_jobs" \
+ && curl -fsSL https://opencode.ai/install | bash \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /root/.opencode/bin/opencode /usr/local/bin/opencode || true
+ENV PATH="/root/.opencode/bin:/usr/local/bin:${PATH}" \
+    JOBBY_JOBSPY_PYTHON=/opt/jobspy/bin/python
+
+# Next standalone (built from web/). The repo has a root lockfile, so Next.js
+# infers the repo root as the workspace root — that's deliberate, so the shared
+# scripts/*.mjs get traced into the standalone bundle. The side effect is that
+# standalone nests the app under web/: server.js lands at /app/web/server.js,
+# not /app/server.js. So static + public go next to the app (resolved by
+# __dirname), and the CMD runs from /app/web.
+COPY --from=build /app/web/.next/standalone ./
+COPY --from=build /app/web/.next/static /app/web/.next/static
+COPY --from=build /app/web/public /app/web/public
+
+# Runtime uses CAREER_OPS_ROOT mount for openrouter-runner / modes / data (local-first).
+WORKDIR /app/web
+EXPOSE 3000
+CMD ["node", "server.js"]

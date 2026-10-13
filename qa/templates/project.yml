@@ -1,0 +1,42 @@
+# Copy to qa/project.yml and replace every angle-bracket value.
+version: 1
+product: <product-name>
+
+requirements:
+  manifest: qa/features.yml
+  performance_budgets: qa/performance-budgets.yml
+  manual_ledger: qa/runs
+  reports: qa/reports
+
+browser:
+  attended_mcp: playwright
+  attended_mode: extension
+  mcp_config: .cursor/mcp.json
+  base_url_env: <BASE_URL_ENV>
+  default_base_url: http://localhost:<port>
+  external_url_env: <EXTERNAL_URL_ENV>
+
+automation:
+  runner: playwright
+  config: playwright.config.ts
+  test_dir: tests/e2e
+  run_report: test-results/e2e-report.json
+  commands:
+    list: npx playwright test --list
+    test: npm run test:e2e
+    coverage: npm run qa:coverage
+    evidence: npm run qa:evidence
+    report: npm run qa:report
+
+credentials:
+  contract: tests/e2e/credentials.ts
+  required_env: [<E2E_EMAIL>, <E2E_PASSWORD>]
+  optional_env: []
+
+safety:
+  allowed_origins: [http://localhost:<port>, staging]
+  forbidden_terminal_actions:
+    - submit
+    - send
+    - purchase
+    - delete real user data

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Traceability contract
+    url: https://github.com/ahmedyusef9/jobby/blob/main/.jobby/GITHUB.md
+    about: How milestones, backlog ids, and GitHub issues connect
+  - name: ROADMAP (milestones)
+    url: https://github.com/ahmedyusef9/jobby/blob/main/.jobby/ROADMAP.md
+    about: M1–M9 acceptance criteria
+  - name: Upstream career-ops
+    url: https://github.com/santifer/career-ops/issues
+    about: Bugs in the shared CLI toolchain — not jobby product issues

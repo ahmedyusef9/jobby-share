@@ -1,0 +1,15 @@
+---
+description: How to write Ahmad's cv.md — short summary, proof in experience
+globs: cv.md,web/src/lib/cv/**,web/src/components/cv/**
+alwaysApply: false
+---
+
+# CV writing
+
+`cv.md` is the source of truth. When editing it (or proposing a rewrite in CV chat):
+
+- **Professional Summary: 2–3 lines.** Who you are, where you work (backend / distributed systems / observability / data), Python and Go. Stop there.
+- **Do not** put Prometheus/Thanos/Grafana stacks, Kafka throughput, SLA details, or LLM metrics in the summary. Those are Experience bullets.
+- **Experience is the CV.** Verb-first points, one outcome per bullet, named systems and numbers visible. Senior register, first person or verb-first — not slogans, not essays.
+- Do not change an employer job title unless it already appears in `cv.md`.
+- Never invent facts. If it is not in `cv.md` or the user said it in this conversation, omit it.

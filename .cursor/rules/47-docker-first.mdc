@@ -1,0 +1,66 @@
+---
+description: Jobby runs only in Docker. Host publish port comes from .ports.yml, never a hardcoded 3001. Compose is the local/stage runtime; Kubernetes later reuses the same images.
+alwaysApply: true
+---
+
+# Docker-first runtime
+
+Jobby is a **container product**. The UI, worker, and Redis you develop against
+are the same shape you will ship. A host `next dev` next to Compose is two
+apps, two env files, and a stale image.
+
+## Ports — `.ports.yml` is the source of truth
+
+This machine assigns each project a **reserved range**. Jobby's range and the
+host port Compose (or k8s later) **exposes** live in `.ports.yml`:
+
+- `range` — exclusive to this repo; no other project may bind inside it
+- `services.compose-web` — the **host** port you open in a browser
+- Inside the container, Next still listens on **3000**. Only the published
+  mapping (`host compose-web → container 3000`) is project-specific.
+
+Before `docker compose up` or any serve/deploy: read `.ports.yml`, set
+`JOBBY_WEB_PORT` to `services.compose-web`, and set `AUTH_URL` to
+`http://127.0.0.1:<compose-web>` (or the public URL if a funnel is in front).
+Do not hardcode `3001`, `4720`, or `3000` in rules, skills, or commands.
+
+## Run here (only)
+
+```bash
+# JOBBY_WEB_PORT and AUTH_URL must match .ports.yml compose-web
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up --build
+# Stop: docker compose -f deploy/docker-compose.yml down
+```
+
+Local URL: `http://127.0.0.1:<compose-web>` from `.ports.yml`.
+
+Secrets: `deploy/.env` (gitignored). Not `web/.env.local` for product runs.
+Operator sign-in on a multi-tenant instance (`AUTH_SINGLE_TENANT=0`) is the
+**Operator sign-in** control, not the email form.
+
+## Forbidden unless `JOBBY_ALLOW_HOST_NEXT=1`
+
+- `npm run dev` / `npx next dev` under `web/`
+- `scripts/web-ui.sh` (except `--stop`)
+- A second Jobby UI on the host next to Compose
+
+After a UI or `web/` / `scripts/` change that must be visible in the browser,
+**rebuild the image**. Compose bind-mounts `..:/data` for user-layer files
+(`cv.md`, `data/`, `config/`). It does **not** hot-reload Next.js source.
+
+## Deploy stages
+
+Follow `.cursor/skills/docker-deploy/SKILL.md`: **dev** (this compose file,
+host port from `.ports.yml`), **stage** (`deploy/docker-compose.qa.yml` or a
+remote compose host — same `JOBBY_WEB_PORT` contract), **production** (same
+Dockerfiles; Kubernetes later publishes `compose-web` as the Service port,
+containerPort 3000).
+
+## QA and E2E
+
+`JOBBY_E2E_BASE_URL` / `qa-run --base-url` is `http://127.0.0.1:<compose-web>`,
+not a host Next port and not another project's 3000/3001.
+
+Public MCP (ChatGPT, Claude.ai) is Tailscale Funnel in front of that same
+host port — see `48-tailscale-serve.mdc`. Funnel backends must be
+`http://127.0.0.1:<compose-web>`, never a stale `3001`.

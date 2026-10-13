@@ -1,0 +1,46 @@
+# Durable source for jobby compose CI. `.github/**` is upstream SYSTEM_PATHS —
+# re-install after `update-system.mjs apply`:
+#   cp deploy/ci/github-compose-build.yml .github/workflows/jobby-compose-build.yml
+name: jobby compose build
+
+on:
+  pull_request:
+    paths:
+      - "deploy/**"
+      - "web/**"
+      - "package.json"
+      - "package-lock.json"
+      - "*.mjs"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/**"
+      - "web/**"
+      - "package.json"
+      - "package-lock.json"
+      - "*.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-web:
+    name: Dockerfile.web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build web image
+        run: ./deploy/ci/compose-build.sh web
+
+  compose-worker:
+    name: Dockerfile.worker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build worker image
+        run: ./deploy/ci/compose-build.sh worker

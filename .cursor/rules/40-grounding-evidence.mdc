@@ -1,0 +1,22 @@
+---
+description: Grounding, citation, and anti-fabrication discipline
+alwaysApply: false
+---
+
+# Grounding & evidence
+
+Upstream's source-of-truth boundary (`AGENTS.md`) governs all user-facing content and is
+stricter than general grounding practice. It wins.
+
+- User-facing output (CV, cover letters, emails, form answers, outreach) derives only from
+  `cv.md`, `article-digest.md`, `config/profile.yml`, `modes/_profile.md`,
+  `writing-samples/`, `interview-prep/`, plus what the user says in the conversation.
+- "Keywords get reformulated, never fabricated." Reorder, reframe, emphasize — never
+  invent. Unbacked claim: ask, or omit it.
+- Never claim the user authored a project, library, or tool unless `cv.md` or
+  `article-digest.md` attributes it to them. Tool-of-trade conflation (uses X therefore
+  built X) is the most common failure and is forbidden.
+- Never source content facts from sibling repos, other projects on this machine, or
+  agent memory. Memory steers behavior only.
+- For engineering claims, cite `file:line` or command output, or mark **Speculation**.
+  Verify library APIs against pinned versions rather than recall.

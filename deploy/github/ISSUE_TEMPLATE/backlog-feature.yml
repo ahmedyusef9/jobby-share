@@ -1,0 +1,57 @@
+name: Backlog feature (JOBBY-BL)
+description: Implementation backlog item — synced with implementation_backlog.csv
+title: "[JOBBY-BL-###] "
+labels: ["backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the backlog id in the title. After editing `implementation_backlog.csv`,
+        create or update the issue via the GitHub MCP server (`issue_write`).
+        See `.cursor/skills/github-trace/SKILL.md`.
+  - type: input
+    id: backlog_id
+    attributes:
+      label: Backlog ID
+      placeholder: JOBBY-BL-020
+    validations:
+      required: true
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: ROADMAP milestone
+      options:
+        - M0 — Container POC
+        - M1 — Identity and tenant
+        - M2 — Search profiles
+        - M3 — Global discovery
+        - M4 — Matching and evaluation
+        - M5 — Execution and progress
+        - M6 — Alpha operations
+        - M7 — Trusted execution
+        - M9 — Friendly 10-account product
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What problem this solves
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: PASS/FAIL bullets from the backlog
+    validations:
+      required: true
+  - type: input
+    id: design_ref
+    attributes:
+      label: Design reference (optional)
+      placeholder: deploy/design/tenancy.json
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

@@ -1,0 +1,136 @@
+---
+description: Manual QA automation — drive the attended browser through Playwright MCP extension mode
+alwaysApply: true
+---
+
+# QA manual automation (Playwright MCP extension)
+
+This gate applies to **every UI delivery claim**, not only named QA rounds.
+A dashboard/page/component change is **unverified** until attended MCP QA
+below has run. HTML scrape, curl, unit tests, and an isolated Cursor browser
+do **not** clear it.
+
+For any jobby **manual QA**, UI "done"/"verified" claim, external-client pass,
+or `deploy/qa/*.md` checklist:
+
+1. Drive attended UI exploration with the project `playwright` MCP server from `.cursor/mcp.json`. It runs `@playwright/mcp` in `--extension` mode so the agent can reuse the tester's existing Chrome/Edge tabs, cookies, SSO/2FA session, and installed extensions.
+2. First call `browser_snapshot`. If it reports that the Playwright Extension is missing, disconnected, or has no selected tab:
+   - **Stop.** Do not fall back to an isolated browser (including Cursor's
+     `cursor-ide-browser`) and do not ask the tester to repeat SSO/2FA elsewhere.
+   - Ask them to install/enable the **Playwright Extension**, open the **product**
+     tab (`http://127.0.0.1:<compose-web>` from `.ports.yml`), and connect that instance.
+3. After they confirm, snapshot again. If the URL is not the product origin
+   (`chrome-extension://…/connect.html`, ChatGPT login, a different app) — **stop**.
+   Ask them to switch the connected tab. Do not proceed. Do not substitute curl.
+4. Then follow the QA prompt / the changed flow exactly (click, type, submit —
+   not first-paint only). Pass/fail is **visible text in that snapshot**, not
+   “no error,” not a string found in raw HTML/RSC.
+5. Treat every existing tab and authenticated session as user-owned. Never inspect, navigate, or close unrelated tabs. Never read browser storage, cookies, password managers, or extension data.
+6. Use the Playwright CLI suite for permanent tests and CI. MCP exploration is attended evidence; it is never the release runner.
+7. After L1 suspend/reactivate, never tell the tester to delete cookies to recover. Reload `/` — the app must drop the stale session and show sign-in. `ERR_TOO_MANY_REDIRECTS` is a product FAIL. Automated check: `test/web-e2e/multi-level-mcp.spec.mjs` L1.
+8. **Mandatory physical & UI manual coverage in every round:**
+   - **External client connections:** Connect ChatGPT, Cursor, and Claude.ai via `/mcp/<key>` or `/api/mcp` + `Authorization: Bearer <key>`. Verify `whoami`, read, write, and post-revoke failure.
+   - **Expired-key seam:** Run `node scripts/qa-expire-key.mjs <key-name>`, verify red `expired` pill in UI and HTTP 401 `expired` response.
+   - **QR Code rendering:** Mint a key, click `Show QR`, verify PNG data URL renders.
+   - **First paint loading:** Verify initial loading state (no false `uncapped` or `No live key yet` before fetch completes).
+   - Every round prompt (`deploy/qa/round-*-prompt.md`) and issue comment MUST record these explicit steps. Never claim QA completion without documenting both automated and manual physical client evidence.
+
+## Forbidden substitutes (not manual QA)
+
+These must **not** be reported as a QA pass or a UI "verified" claim:
+
+- `curl` / `wget` / `node fetch` of HTML or RSC, then grepping for copy
+- Cursor-owned isolated browser (`cursor-ide-browser`) used because the
+  Playwright extension / browsermcp tab was missing or on the wrong URL
+- Unit tests, TypeScript compile, or Docker rebuild with no attended snapshot
+- A screenshot or snapshot of `/signin` (or any page other than the one changed)
+- Recording a pass in chat without a `qa-run.mjs` ledger line
+
+If the attended tab cannot be connected, the claim is **unverified**. Say that.
+Do not silently downgrade to HTML fetch.
+
+## Per-issue QA gate (mandatory before merge)
+
+Every issue must clear the `qa` stage gate from `25-sdlc-lifecycle.mdc` before
+merge or stage promotion. "Looks fine" is not a verdict. For each issue:
+
+1. Run the automated suite for the touched area (`node test-all.mjs`, or the
+   relevant `test/web-e2e/*.spec.mjs`), then `npm run qa:coverage` — report the
+   percentage and named open criteria, never a raw test count.
+2. Run the manual steps from the issue's test plan / the current round prompt.
+3. Record every manual verdict as a ledger line via `scripts/qa-run.mjs` — a
+   manual check that is not recorded did not happen.
+4. Only then move the issue to `stage:ready` and open the PR.
+
+## Which browser tool to use (the "how")
+
+Pick the attended-browser path that fits the seam — full decision tree in
+`.cursor/skills/qa-manual-automation/SKILL.md`:
+
+- **Playwright MCP extension mode** (default): reuse the tester's existing
+  Chrome/Edge tab, cookies, SSO/2FA, and extensions. Start with `browser_snapshot`.
+- **browsermcp** (alternative attended path): drive the tester's existing Chrome
+  tab when the Playwright Extension is unavailable but a `browsermcp` server tab
+  is connected. Same rule: snapshot first, inspect only that tab, never read
+  storage/cookies.
+- **Playwright CLI** (`--debug` headed Chromium) for converting a repeatable manual
+  flow into a permanent test; MCP exploration transcripts never become test code.
+- **Isolated Chromium** only for deterministic CI — never as a fallback that makes
+  the tester repeat SSO/2FA.
+
+Cover the most cases: happy path + negative + boundary + auth/tenant-isolation +
+failure-recovery + the physical-client seams in section 8 above.
+
+## Coverage gate (`qa/features.yml`)
+
+"N tests passed" is not coverage — it has no denominator and a silently
+skipped test counts as a pass. `qa/features.yml` is the denominator: every
+acceptance criterion the product owes, traced to `deploy/qa/mcp-multi-user-matrix.md`,
+`deploy/qa/round-*-prompt.md`, this rule, or `.jobby/ROADMAP.md`.
+
+1. Run `npm run qa:coverage` at the start and end of every QA round. Report the
+   percentage and the named open criteria, never a raw test count.
+2. Adding a test means pointing a criterion's `automated_by` at it. An
+   unmapped test is coverage nobody asked for; a criterion with no
+   `automated_by` and no `manual_only` is an open gap that must stay visible.
+3. `automated_by` links resolve against the real Playwright list, so renaming
+   or deleting a test exits 1. Fix the manifest in the same commit.
+4. After a real run, `node scripts/qa-coverage.mjs --run-report test-results/web-e2e-report.json`
+   demotes any criterion whose test was skipped. A round is not PASS while a
+   criterion it claims is in the `skipped` state.
+5. New requirements land in `qa/features.yml` **before** the test that satisfies
+   them, so the gap is counted even in the rounds where nobody closes it.
+
+## Recording a manual verdict (`qa/runs/`)
+
+A manual check that is not recorded did not happen. Every physical/UI step in
+section 6 above ends with a ledger line, not a sentence in a chat:
+
+```bash
+node scripts/qa-run.mjs open   --round <N> --base-url http://localhost:4700 --actor <you>
+node scripts/qa-run.mjs record <CRITERION-ID> pass --round <N> --mode manual \
+  --evidence '<the status code, visible text or field you actually saw>' --artifact <screenshot>
+node scripts/qa-report.mjs --round <N> --write --summary
+```
+
+`qa-run.mjs` rejects an unknown criterion id and rejects a pass/fail with no
+evidence — work with those guards, never around them. The report then folds the
+ledger together with the Playwright run and tells you what regressed, what
+carried over, and which prior passes sit on code that has since changed and
+must be re-run. Report that, not a test count.
+
+## The round prompt is generated, not written
+
+`deploy/qa/round-<N>-prompt.md` is output, not a document:
+
+```bash
+node scripts/qa-prompt.mjs --round <N> --write
+```
+
+It renders the still-open criteria from `qa/features.yml` in work order —
+regressed, then passes whose code changed underneath, then blocked, failing,
+skipped, and finally never-verified — and carries the exact `qa-run.mjs`
+command for each. Never hand-edit a round prompt and never write one from
+scratch: round 8's prompt was prose restating the multi-user matrix, and two
+copies of one scenario list drift until the prompt silently wins. Change the
+manifest, regenerate the prompt.

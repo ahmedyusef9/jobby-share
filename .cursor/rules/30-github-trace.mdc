@@ -1,0 +1,28 @@
+---
+description: GitHub traceability via built-in GitHub MCP only — no gh CLI bypass
+alwaysApply: true
+---
+
+# GitHub traceability (MCP only)
+
+Jobby GitHub work uses the **built-in GitHub MCP server** (`plugin-github-github`).
+
+## Required
+
+1. `GetDynamicTools` → `plugin-github-github` before any GitHub operation
+2. Use MCP tools (`issue_write`, `list_issues`, `issue_read`, `label_write`, PR tools) — **not** `gh` or custom scripts
+3. Repo: `ahmedyusef9/jobby` (never upstream career-ops for product work)
+4. Load `.cursor/skills/github-trace/SKILL.md` when tracking features or milestones
+5. **Issue-first:** no code before a `JOBBY-BL-###` issue exists in GitHub, tagged to its milestone. GitHub is our backlog and our Jira — the single tracker for every requirement, decision, and PR. If it isn't in GitHub, it didn't happen. See `25-sdlc-lifecycle.mdc` for the gate.
+
+## If MCP is down
+
+Tell the user to fix **Cursor Settings → Plugins → GitHub** (PAT, reconnect). Do not substitute shell scripts.
+
+## IDs
+
+- Backlog: `JOBBY-BL-###` from `implementation_backlog.csv`
+- SDLC `TASK_ID`: `#N` or `JOBBY-BL-###` — never invented
+- Issue marker: `<!-- jobby-sync:JOBBY-BL-### -->` in every synced issue body
+
+Contract: `.jobby/GITHUB.md`

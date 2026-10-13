@@ -1,0 +1,93 @@
+[
+  {
+    "id": "M0",
+    "title": "M0 \u2014 Container POC",
+    "github_number": 1,
+    "description": "Pre-ROADMAP: branding, compose, BullMQ, local smoke. Backlog BL-001\u2013019.",
+    "state": "closed"
+  },
+  {
+    "id": "M1",
+    "title": "M1 \u2014 Identity and tenant",
+    "github_number": 2,
+    "description": "Open signup, Appwrite auth, tenant isolation, export/delete. ROADMAP M1.",
+    "state": "closed"
+  },
+  {
+    "id": "M2",
+    "title": "M2 \u2014 Search profiles",
+    "github_number": 3,
+    "description": "Many search profiles per tenant; supersede portals.yml as query source.",
+    "state": "open"
+  },
+  {
+    "id": "M3",
+    "title": "M3 \u2014 Global discovery",
+    "github_number": 4,
+    "description": "Canonical job_postings; dedup; idempotent scans.",
+    "state": "open"
+  },
+  {
+    "id": "M4",
+    "title": "M4 \u2014 Matching and evaluation",
+    "github_number": 5,
+    "description": "JobMatch per tenant; score on match; feedback.",
+    "state": "open"
+  },
+  {
+    "id": "M5",
+    "title": "M5 \u2014 Execution and progress",
+    "github_number": 6,
+    "description": "Quota, mutex, scan events, progress from events not model claims.",
+    "state": "closed"
+  },
+  {
+    "id": "M6",
+    "title": "M6 \u2014 Alpha operations",
+    "github_number": 7,
+    "description": "Operator screen, capacity, accounts, usage; multi-instance safe.",
+    "state": "closed"
+  },
+  {
+    "id": "M7",
+    "title": "M7 \u2014 Trusted execution",
+    "github_number": 8,
+    "description": "Artifact-verified jobs, sandbox, fair queue, bind hardening.",
+    "state": "open"
+  },
+  {
+    "id": "M8",
+    "title": "M8 \u2014 BYO scoring (superseded)",
+    "github_number": 9,
+    "description": "Superseded by M9 / D-029. Do not open new work here.",
+    "state": "closed"
+  },
+  {
+    "id": "M9",
+    "title": "M9 \u2014 Friendly 10-account product",
+    "github_number": 10,
+    "description": "Resume, explore, pipeline, rules/export, MCP; host member Score off.",
+    "state": "open"
+  },
+  {
+    "id": "R1",
+    "title": "R1 \u2014 MCP-first platform (v0.5.0)",
+    "github_number": 11,
+    "description": "Zero-key members; user's own AI scores via MCP write-back; jobby = multi-tenant hub with RBAC + MCP resume/job tools. Release branch release/v0.5.0. BL-054-059.",
+    "state": "open"
+  },
+  {
+    "id": "R2",
+    "title": "R2 \u2014 Automated UI e2e (v0.5.1)",
+    "github_number": 12,
+    "description": "Playwright test/web-e2e specs: RBAC console, zero-key member surfaces, MCP tool contracts over raw JSON-RPC; CI opt-in job. BL-060-064.",
+    "state": "open"
+  },
+  {
+    "id": "R3",
+    "title": "R3 \u2014 Full MCP surface + connectivity",
+    "github_number": 13,
+    "description": "Make jobby's MCP a first-class platform: ChatGPT/funnel fix (67), conformance suite (68), tool completion + docs parity (69), external e2e + runbook (70), usage telemetry v2 (71), guards layer (72), brain-store memory tools (73), fetch tool w/ SSRF guard (74), scoped+expiring one-link connect (75), versioning discipline (76), admin MCP console (77), architecture doc (78).",
+    "state": "open"
+  }
+]

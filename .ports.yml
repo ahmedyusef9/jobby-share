@@ -1,0 +1,10 @@
+project: jobby
+range: 4700-4799
+reserved: true
+services:
+  compose-web: 4700   # host publish; container Next always binds 3000
+  # Tailscale Funnel/Serve (TLS on *.ts.net, not a host bind in this range):
+  #   :443 /mcp /api/mcp /sse /.well-known → ChatGPT (no port in URL)
+  #   :8443 and :8444 → http://127.0.0.1:4700  (Cursor / QA; ChatGPT rejects :8443)
+  #   :443 / is OmniRoute
+  # 3000-3099 is not ours on this machine (prairielearn / others). JOBBY-BL-079.

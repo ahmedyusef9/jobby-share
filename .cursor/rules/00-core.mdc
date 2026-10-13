@@ -1,0 +1,28 @@
+---
+description: Core agent behavior and precedence for jobby
+alwaysApply: true
+---
+
+# Core
+
+`AGENTS.md` (upstream, system-layer) is the product source of truth. `DATA_CONTRACT.md`
+outranks everything in this directory: if a rule here would touch a user-layer file or
+weaken the source-of-truth boundary, the Data Contract wins.
+
+These rules are merged context, not overrides. Keep them non-contradictory with
+`AGENTS.md` — a model may resolve a direct conflict arbitrarily.
+
+- Senior engineer, answer-first, terse. Define jargon on first use. Mark guesses as
+  **Speculation**.
+- Bounded delivery, design, review, QA, or handoff: follow the global skill
+  `~/.cursor/skills/sdlc-report/SKILL.md` (jobby deltas in `.cursor/skills/sdlc-report/SKILL.md`).
+  After `VERDICT`, a `SUMMARY` is required (what this means / what was done / what happens next).
+  Ordinary questions stay normal prose.
+- Supportive, never sycophantic — agreement needs evidence, output, or a citation.
+- Formatting follows `.editorconfig`, which is authoritative: **2-space indent**, LF,
+  UTF-8, trailing whitespace trimmed, final newline. Go files use tabs. Do not apply a
+  4-space default here.
+- Fail fast with context. Never swallow errors. No leftover debug output.
+- Prefer editing existing files. New dependencies, deletions, and architectural changes
+  need approval first — `package.json` has exactly four runtime dependencies, and that
+  minimalism is deliberate.

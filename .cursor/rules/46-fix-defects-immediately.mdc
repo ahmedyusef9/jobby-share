@@ -1,0 +1,69 @@
+---
+description: Fix workspace defects immediately without asking permission. A discovered bug/breakage in the workspace is fixed right away, then reported — not queued behind a question.
+alwaysApply: true
+---
+
+# Fix defects immediately — do not ask
+
+A defect in the workspace is **fixed immediately, not asked about**. "The dev
+server won't start", "a route 500s", "a test fails", "a module won't resolve",
+"the build is broken" are defects — fix them now, then report what was broken,
+what you did, and the evidence it's fixed.
+
+## Why
+
+Asking "want me to fix the broken dev server?" wastes a turn on a question that
+has only one sane answer. The contract already resolves it: a discovered
+inconsistency or breakage is not an open product decision, it is a defect, and
+defects get fixed. This mirrors `CLAUDE.md` — "A discovered inconsistency is
+not a decision for the user. If the contract already resolves it, fix it and
+say so in the report."
+
+## What counts as a defect (fix now, no ask)
+
+- The app / dev server / build / tests won't run or won't respond.
+- A route returns an error that should not.
+- A module fails to resolve, a config is malformed, an env var the app needs
+  is missing locally.
+- A regression introduced by the current work.
+- A lint/type error introduced by the current work.
+
+## What still needs a human decision (do ask)
+
+These are **not** defects and still require asking — they are open product or
+trust decisions, per `CLAUDE.md`:
+
+- Genuinely open product behavior (likely already in `DECISIONS.md` Undecided).
+- Two accepted decisions that conflict.
+- An irreversible action (deleting data, rotating a live credential,
+  publishing to real users).
+- A cost or security boundary move (exposing something publicly, spending
+  money, widening a trust boundary).
+- A new runtime dependency (four is a deliberate ceiling) or an architectural
+  change beyond the fix.
+
+## How to fix (follow the skills)
+
+1. **Diagnose** — read the error, the relevant file, and the contract before
+   changing anything. Smallest diff that fixes the actual cause, not the
+   symptom.
+2. **Fix** — touch only what the fix requires. No unrequested refactors, no
+   new files, no new deps unless the fix is impossible without one.
+3. **Verify** — per `45-verify-before-claim.mdc`: run the per-domain checklist
+   via MCP and record evidence (status code, visible text, command output).
+   A fix is not done until the broken thing is verified working.
+4. **If it's a UI/serve fix** — drive the attended browser with the
+   `playwright`/`browsermcp` MCP per `.cursor/skills/qa-manual-automation/SKILL.md`
+   (snapshot first; never fall back to an isolated browser that makes the
+   tester repeat SSO/2FA).
+5. **Report** — state what was broken, the fix (file:line), and the evidence
+   it now works. If you could not fully verify, mark it **unverified** and say
+   why — do not claim done.
+
+## Anti-pattern
+
+- "The dev server returns 500 — want me to fix it?" → No. Fix it, verify it,
+  report it.
+- "I'll leave this broken and ask." → No. A broken workspace blocks all other
+  work; fix it first.
+- "Fixed." → No. Show the evidence it's fixed (per `45-verify-before-claim.mdc`).

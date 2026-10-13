@@ -1,0 +1,84 @@
+---
+description: SDLC lifecycle gate — issue-first in GitHub, milestone-tagged, stage gates, report format. The spine that ties traceability, clean coding, and QA together.
+alwaysApply: true
+---
+
+# SDLC lifecycle gate
+
+This is the spine of how work moves from idea to merge in jobby. The companion
+rules own the detail: `30-github-trace` (GitHub is the tracker), `47-docker-first`
+(run and deploy only via Compose; k8s later), `48-tailscale-serve` (Funnel/Serve
+→ compose-web), `70-engineering-standards`
+(clean code / DRY), `80-qa-manual` (manual QA), `90-agent-report-contract` (report format).
+
+## 1. Issue-first — no code before GitHub
+
+A task or requirement is **defined in GitHub before any implementation starts**.
+
+1. Resolve a backlog id `JOBBY-BL-###` from `implementation_backlog.csv` (add a row if none exists).
+2. Create the GitHub issue via the **GitHub MCP** (`issue_write`), body includes `<!-- jobby-sync:JOBBY-BL-### -->` and the acceptance criteria.
+3. Tag the issue to the active **milestone** (`M#` from `.jobby/ROADMAP.md` → numeric milestone id in `deploy/github/milestones.json`).
+4. Only then branch `feature/JOBBY-BL-###-slug` and start coding.
+
+No issue, no milestone, no branch. If the user asks for work that has no issue, create the issue first and say so. GitHub is our backlog and our Jira — see `30-github-trace.mdc` and `.jobby/GITHUB.md`.
+
+## 2. Stage gates — every issue passes through these
+
+Track the stage as a label (`stage:defined`, `stage:designed`, `stage:intake`, `stage:development`, `stage:qa`, `stage:ready`) via `label_write`, advanced left-to-right. Do not skip a gate; a regression found in a later stage goes back to `development`.
+
+| Stage | Done means |
+|---|---|
+| `defined` | Acceptance criteria written in the issue body; backlog row exists. |
+| `designed` | Design refs linked (`deploy/design/*` / ADR) when the change is non-trivial; noted in a comment. |
+| `intake` | Dependencies, risks, and the test plan listed in a comment; milestone confirmed. |
+| `development` | Branch + code; conventional commits; `node test-all.mjs` green for the touched area. |
+| `qa` | Manual + automated QA pass per `80-qa-manual.mdc`; verdict recorded in `qa/runs/`. |
+| `ready` | PR open with `Closes #N`; SDLC report `VERDICT` + `SUMMARY` posted; issue closed on merge. |
+
+A merge or stage promotion without a `qa` verdict recorded is **blocked**. "Looks fine" is not a verdict.
+
+## 3. Development format — clean code, DRY
+
+Code follows `70-engineering-standards.mdc` (always applied). The non-negotiables:
+
+- **DRY:** one source of truth. Reuse `web/src/components/job-info-panel.tsx` + `web/src/lib/role-href.ts` for role Job info/status/PDF/Apply; see `.cursor/skills/dry-reuse/SKILL.md`. Do not copy-paste those controls per page.
+- **Small diffs:** touch only what the change requires. No unrequested abstractions, no extra files, no new runtime deps (four is a deliberate ceiling).
+- **Fail fast with context; never swallow exceptions.** Every network/subprocess call gets an explicit timeout.
+- **Tests first:** a bugfix ships its regression test first; behavior that changes scoring or output shape gets a golden run against `evals/`.
+- **Conventional commits** (`feat:`, `fix:`, `test:`, …); imperative subject ≤ 72 chars; never hand-edit `CHANGELOG.md` or `VERSION`.
+- `.editorconfig` is authoritative: 2-space indent, LF, final newline, no trailing whitespace; tabs in `.go`.
+
+## 4. QA gate before merge
+
+Before each merge or stage promotion, run the manual + automated QA defined in `80-qa-manual.mdc`:
+
+- `npm run qa:coverage` at the start and end of the round; report the percentage and named open criteria, never a raw test count.
+- Drive the attended browser with the `playwright` MCP (extension mode) or `browsermcp` (existing Chrome tab) — see `.cursor/skills/qa-manual-automation/SKILL.md` for which to pick and how.
+- Record every manual verdict as a ledger line via `scripts/qa-run.mjs`; a manual check that is not recorded did not happen.
+- The round prompt is generated (`scripts/qa-prompt.mjs`), never hand-written.
+
+**UI work is blocked from "verified" / `READY_FOR_REVIEW` until attended MCP QA.**
+Curl of HTML, RSC greps, unit tests, Docker rebuild, and Cursor's isolated
+browser are not that gate. If the Playwright/`browsermcp` tab is missing or
+on the wrong URL, the claim is **unverified** — do not invent a substitute.
+
+## 5. Report format at handoff
+
+Bounded delivery, review, QA, release, or handoff work ends with the SDLC report from `.cursor/skills/sdlc-report/SKILL.md`. `TASK_ID` is the GitHub issue `#N` or `JOBBY-BL-###` — never invented. After `VERDICT`, the `SUMMARY` (Arabic first, then English) is required: what this means / what was done / what happens next.
+
+## 6. Traceability — GitHub is the single source of truth
+
+Everything shippable is tracked on `ahmedyusef9/jobby` via the GitHub MCP: issues, milestones, labels, PRs. The CSV is the plan; GitHub is the tracker. Never carry work that lives only in chat or only on a branch — if it isn't in GitHub, it didn't happen. See `30-github-trace.mdc`.
+
+## Diagram
+
+```mermaid
+flowchart LR
+  BL[implementation_backlog.csv<br/>JOBBY-BL-###] --> ISS[GitHub issue<br/>milestone M#]
+  ISS --> ST[stage gates:<br/>defined→designed→intake→development→qa→ready]
+  ST --> DEV[clean code + DRY<br/>70-engineering-standards]
+  DEV --> QA[qa-manual + qa:coverage<br/>80-qa-manual]
+  QA --> PR[PR Closes #N]
+  PR --> RPT[SDLC report<br/>VERDICT + SUMMARY]
+  RPT --> CLS[issue closed]
+```

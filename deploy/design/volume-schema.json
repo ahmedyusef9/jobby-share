@@ -1,0 +1,50 @@
+{
+  "id": "JOBBY-BL-015",
+  "title": "Persistent volume + schema design",
+  "status": "accepted",
+  "decided_at": "2026-08-13",
+  "principle": "Files remain the source of truth for career-ops; volumes/DB are mounts and indexes — never invent a parallel SoT that drifts from cv.md / applications.md / reports/.",
+  "local_poc": {
+    "CAREER_OPS_ROOT": "host bind-mount ./ → /data",
+    "runs": ".career-ops-web/runs/{runId}.json",
+    "secrets": ".career-ops-web/secrets.env"
+  },
+  "railway_target": {
+    "volume": {
+      "mount": "/data",
+      "service": "shared by web + worker (same volume id)",
+      "backup": "Railway volume snapshots + optional rsync of /data to object storage later"
+    },
+    "layout": {
+      "cv.md": "user CV SoT",
+      "config/profile.yml": "identity + targeting",
+      "modes/_profile.md": "narrative (gitignored user layer)",
+      "modes/_custom.md": "house rules",
+      "portals.yml": "scan targets",
+      "data/applications.md": "tracker SoT",
+      "data/pipeline.md": "inbox URLs",
+      "reports/{num}-*.md": "evaluation artifacts",
+      "output/*.pdf": "generated CVs",
+      "batch/tracker-additions/*.tsv": "merge inputs",
+      ".career-ops-web/": "web/worker operational state (runs, secrets)"
+    }
+  },
+  "entities": [
+    { "name": "Profile", "files": ["cv.md", "config/profile.yml", "modes/_profile.md"] },
+    { "name": "Application", "files": ["data/applications.md"], "key": "report# or company+role+req" },
+    { "name": "Report", "files": ["reports/{num}-*.md"], "key": "num" },
+    { "name": "Artifact", "files": ["output/*.pdf", "data/pdf-index.tsv"] },
+    { "name": "Run", "files": [".career-ops-web/runs/*.json"], "key": "runId" }
+  ],
+  "migration_from_files": [
+    "1. Attach Railway volume at /data empty",
+    "2. rsync local CAREER_OPS_ROOT user-layer paths into volume (exclude node_modules, .git, web/.next)",
+    "3. Point CAREER_OPS_ROOT=/data on web+worker",
+    "4. Verify tracker row count + latest report readable",
+    "5. Optional later: Postgres mirror of applications.md for query — write-through still via merge-tracker.mjs"
+  ],
+  "non_goals": [
+    "Treating ephemeral container FS as SoT",
+    "Replacing markdown tracker with DB-only writes in POC"
+  ]
+}

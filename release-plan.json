@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "project_id": "jobby",
+  "releases": [
+    {
+      "release_id": "jobby-poc-local-container",
+      "version": "0.1.0-poc",
+      "status": "ready_for_review",
+      "target_date": "2026-08-20",
+      "task_ids": [
+        "JOBBY-BL-001",
+        "JOBBY-BL-002",
+        "JOBBY-BL-003",
+        "JOBBY-BL-004",
+        "JOBBY-BL-005",
+        "JOBBY-BL-006",
+        "JOBBY-BL-007",
+        "JOBBY-BL-008",
+        "JOBBY-BL-009",
+        "JOBBY-BL-010",
+        "JOBBY-BL-011",
+        "JOBBY-BL-014"
+      ],
+      "required_checks": [
+        "docker compose up healthy",
+        "GET /api/clis shows opencode",
+        "GET /api/queue queueEnabled true",
+        "one Score smoke PASS (BL-008)",
+        "worker failure visible in UI/poll (BL-010)",
+        "PDF smoke under output/ (BL-011)"
+      ],
+      "evidence": [
+        "compose services up web:3001 worker redis 2026-08-12",
+        "POST /api/run evaluate openrouter \u2192 X-Jobby-Queue:1 run-1786561279693-1",
+        "reports/172-arize-2026-08-12.md created; run snapshot finished=true terminal done",
+        "Note: report body thin (free model); tracker merge not verified",
+        "BL-009: compose documented at http://localhost:3001",
+        "BL-010: fail smoke run-fail-smoke-* \u2192 poll status=error in 2s; /api/queue recentFailed",
+        "BL-011: output/cv-smoke-bl011-165-2026-08-13.pdf (Playwright 1.62 worker)",
+        "BL-014: deploy/ci/compose-build.sh + github-compose-build.yml"
+      ],
+      "expected_evidence": [
+        "compose ps screenshot or logs",
+        "Score run snapshot or report path"
+      ],
+      "notes": "Local-first container POC; Railway not included"
+    },
+    {
+      "release_id": "jobby-poc-railway",
+      "version": "0.2.0-poc",
+      "status": "planned",
+      "target_date": "2026-09-01",
+      "task_ids": [
+        "JOBBY-BL-018",
+        "JOBBY-BL-012",
+        "JOBBY-BL-013"
+      ],
+      "required_checks": [
+        "BL-008 PASS",
+        "Railway web health",
+        "worker+redis connected"
+      ],
+      "evidence": [],
+      "expected_evidence": [
+        "Railway public URL",
+        "/api/queue true on Railway"
+      ],
+      "notes": "Volume design (BL-015) accepted \u2014 implement volume attach on Railway deploy"
+    },
+    {
+      "release_id": "jobby-data-tenancy",
+      "version": "0.3.0",
+      "status": "planned",
+      "task_ids": [
+        "JOBBY-BL-015",
+        "JOBBY-BL-016",
+        "JOBBY-BL-017"
+      ],
+      "required_checks": [
+        "design review approved"
+      ],
+      "evidence": [
+        "deploy/design/volume-schema.json",
+        "deploy/design/tenancy.json",
+        "deploy/design/n8n-decision.json (n8n deferred)"
+      ],
+      "expected_evidence": [
+        "ADR/design doc"
+      ],
+      "notes": "Design gates Done; implementation (volume attach, tenant dirs, optional n8n) still future"
+    },
+    {
+      "release_id": "jobby-cv-ai-chat",
+      "version": "0.4.0",
+      "status": "ready_for_review",
+      "target_date": "2026-09-15",
+      "task_ids": [
+        "JOBBY-BL-019"
+      ],
+      "required_checks": [
+        "CV tab chat Accept updates editor preview",
+        "Save writes cv.md; Reject does not",
+        "No fabricated experience in accepted patch"
+      ],
+      "evidence": [
+        "POST http://localhost:3001/api/cv/chat \u2192 200 via omniroute/auto/best-coding; cv.md untouched",
+        "BrowserMCP /cv: Reject no editor/disk change; Accept Languages one-liner + preview; Save wrote then restored from .bak",
+        "web/src/components/cv/cv-chat.tsx + /api/cv/chat; CHANGELOG Unreleased"
+      ],
+      "expected_evidence": [
+        "BrowserMCP /cv transcript",
+        "cv.md diff after Save"
+      ],
+      "notes": "AI chatbox on CV editor; grounded edits; user Accept gate. Save smoke restored cv.md from atomic backup."
+    }
+  ]
+}

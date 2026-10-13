@@ -1,0 +1,30 @@
+{
+  "id": "JOBBY-BL-016",
+  "title": "Tenant isolation model",
+  "status": "accepted",
+  "decided_at": "2026-08-13",
+  "audience": "developers-first (single operator / small team before billing)",
+  "decision": "directory-per-tenant under CAREER_OPS_ROOT/tenants/{tenantId}/ with auth gate before path resolution",
+  "auth_provider": {
+    "poc": "single shared operator secret / Railway private networking (no multi-user login yet)",
+    "next": "Clerk or Auth.js (GitHub OAuth) — tenantId from session claim; never from client path params alone"
+  },
+  "isolation": {
+    "model": "directory-per-tenant",
+    "root": "/data/tenants/{tenantId}/",
+    "contains": "full career-ops user-layer tree (cv.md, config/, data/, reports/, output/, modes/_profile.md, portals.yml)",
+    "forbid": "shared CAREER_OPS_ROOT for all users in production"
+  },
+  "api_rule": "Resolve tenant from authenticated session → set effective CAREER_OPS_ROOT = /data/tenants/{id}; refuse cross-tenant path traversal",
+  "billing": "deferred",
+  "alternatives_rejected": [
+    {
+      "option": "single shared /data for all users",
+      "why": "FAIL AC — leaks CV/tracker across tenants"
+    },
+    {
+      "option": "DB-only tenancy without file roots",
+      "why": "Breaks career-ops scripts that expect markdown on disk"
+    }
+  ]
+}

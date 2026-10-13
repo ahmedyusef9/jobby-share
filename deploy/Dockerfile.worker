@@ -1,0 +1,55 @@
+# jobby worker — BullMQ consumer + Playwright + OpenCode
+# Build context: repository root
+FROM mcr.microsoft.com/playwright:v1.62.0-jammy
+
+ENV NODE_ENV=production \
+    CAREER_OPS_ROOT=/data \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    PATH=/root/.opencode/bin:/usr/local/bin:$PATH \
+    JOBBY_JOBSPY_PYTHON=/opt/jobspy/bin/python
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git tini python3 python3-venv python3-pip libgomp1 \
+ && python3 -m venv /opt/jobspy \
+ && /opt/jobspy/bin/pip install --no-cache-dir python-jobspy \
+ && /opt/jobspy/bin/python -c "from jobspy import scrape_jobs" \
+ && curl -fsSL https://opencode.ai/install | bash \
+ && ln -sf /root/.opencode/bin/opencode /usr/local/bin/opencode || true \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI only — the daemon stays on the host. The sandbox container never
+# receives this socket; only this dispatcher image talks to it.
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+
+WORKDIR /app
+
+# Root career-ops (scripts the worker shells out to)
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --ignore-scripts 2>/dev/null || npm install --omit=dev --ignore-scripts
+COPY *.mjs ./
+# Data files the root scripts load as siblings (JOBBY-BL-057). `tracker-aliases.json`
+# is required at import time by tracker-parse.mjs, which the report path pulls in —
+# without it every `openrouter-runner.mjs pipeline` run in this image died on its
+# first import, so the evaluation path had never actually run here.
+COPY tracker-aliases.json ./
+COPY lib ./lib
+COPY modes ./modes
+COPY templates ./templates
+COPY batch ./batch
+COPY scripts ./scripts
+COPY providers ./providers
+COPY utils ./utils
+COPY config ./config
+COPY web/src/lib/tenant ./web/src/lib/tenant
+
+# Worker package (bullmq)
+COPY deploy/worker/package.json deploy/worker/package-lock.json* ./deploy/worker/
+WORKDIR /app/deploy/worker
+RUN npm install --omit=dev --no-audit --no-fund
+COPY deploy/worker/*.mjs ./
+
+WORKDIR /app
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "deploy/worker/index.mjs"]

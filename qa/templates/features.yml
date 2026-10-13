@@ -1,0 +1,44 @@
+version: 1
+product: <product-name>
+release: <release-name>
+risk_order: [critical, high, medium, low]
+
+features:
+  - id: AUTH
+    title: Authentication
+    surface: web
+    risk: critical
+    source: <requirement-or-user-story>
+    touches:
+      - src/auth/**
+    criteria:
+      - id: AUTH-01
+        expected: a signed-out visitor is redirected to sign-in
+        level: ui
+        # Add only after the test exists and resolves uniquely:
+        # automated_by: "tests/e2e/auth.spec.ts::signed-out visitor is redirected"
+
+  - id: EXTERNAL
+    title: External client compatibility
+    surface: system
+    risk: high
+    source: <integration-contract>
+    criteria:
+      - id: EXTERNAL-01
+        expected: the real external client connects and completes its read-only smoke flow
+        level: manual
+        manual_only: true
+        manual_evidence: record client name, timestamp, visible result, and screenshot
+
+  - id: PERF
+    title: Performance
+    surface: web+api
+    risk: medium
+    source: <product-slo>
+    criteria:
+      - id: PERF-01
+        expected: the critical API p95 stays inside the versioned load budget
+        level: api
+      - id: PERF-02
+        expected: the primary UI journey stays inside its versioned Web Vitals budget
+        level: ui

@@ -1,0 +1,23 @@
+{
+  "id": "JOBBY-BL-017",
+  "title": "n8n subscription workflows",
+  "status": "deferred",
+  "decided_at": "2026-08-13",
+  "decision": "defer — keep BullMQ + optional deploy/worker/scheduler.mjs for POC/Railway",
+  "cost": {
+    "n8n_cloud_starter_usd_per_month": "~20+",
+    "self_hosted_ops": "extra container, upgrades, credential store, another failure domain",
+    "bullmq_incremental": "already in stack (Redis + worker); scheduler profile is a few lines"
+  },
+  "when_reconsider": [
+    "Non-engineer operators need visual workflow editing",
+    "Cross-product automations (Notion/Slack/CRM) beyond jobby queue kinds",
+    "Subscription budget approved and BL-012 scheduler proven insufficient"
+  ],
+  "preferred_now": {
+    "scan": "BullMQ enqueueScan + scheduler.mjs profile",
+    "score_pdf": "BullMQ executeRun",
+    "ui": "/api/queue health"
+  },
+  "fail_condition_avoided": "Do not introduce n8n without an adopt/defer decision"
+}

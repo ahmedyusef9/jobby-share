@@ -1,0 +1,22 @@
+---
+description: Prompt and mode authoring patterns
+globs: modes/**,plugins/**,providers/**,batch/**
+alwaysApply: false
+---
+
+# Prompt & mode authoring
+
+Modes are this product's prompt layer. They are system-layer files: improve them for
+everyone via upstream PRs, never to encode one user's preference (that goes in
+`modes/_custom.md`).
+
+- Patterns: chain-of-thought for multi-step reasoning, few-shot to demonstrate output
+  format, ReAct when tools are involved, self-consistency when a score must be stable.
+- Structure a mode as identity -> scope -> input -> output -> rules, matching
+  `modes/_shared.md` conventions.
+- Prompts stay in `*.md` and are loaded at runtime. Never inline a prompt string in
+  `.mjs`.
+- Scoring changes are behavior changes: the A-F rubric and 1.0-5.0 scale are a public
+  contract. Any change needs a golden-set run in `evals/` before it ships.
+- A mode edit that changes output shape must be reflected in the language variants under
+  `modes/<lang>/` or it silently diverges.

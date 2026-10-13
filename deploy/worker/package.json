@@ -1,0 +1,11 @@
+{
+  "name": "@jobby/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BullMQ worker for jobby Score / scan / pipeline jobs",
+  "dependencies": {
+    "bullmq": "^5.58.5",
+    "ioredis": "^5.7.0"
+  }
+}

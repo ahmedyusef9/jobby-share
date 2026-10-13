@@ -1,0 +1,22 @@
+# Versioned QA guardrails. These are release gates, not production capacity
+# claims: change them deliberately when the product SLO changes, never inside a
+# test just to make a slow build green.
+version: 1
+profile: local-and-staging
+
+mcp_tools_call:
+  endpoint: /api/mcp
+  tool: whoami
+  samples: 40
+  virtual_users: 5
+  warmup: 3
+  p95_ms: 1500
+  max_error_rate: 0
+
+connect_web_vitals:
+  route: /connect
+  samples: 5
+  settle_ms: 500
+  fcp_p75_ms: 1800
+  lcp_p75_ms: 2500
+  cls_p75: 0.1

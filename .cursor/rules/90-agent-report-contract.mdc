@@ -1,0 +1,21 @@
+---
+description: Apply the formal task report for bounded delivery, review, QA, or handoff work
+alwaysApply: false
+---
+
+# Report adapter
+
+For bounded execution, investigation, review, QA, release, status, blocker, or cross-agent
+handoff work, render the report defined in `~/.cursor/skills/sdlc-report/SKILL.md`
+(jobby deltas in `.cursor/skills/sdlc-report/SKILL.md`).
+
+After `VERDICT`, a `SUMMARY` is required: what this means, what was done, what happens next —
+plain language a non-engineer can read. Do not skip it. Do not bury it at the end. Do not
+replace it with an options menu.
+
+Answer ordinary questions normally — do not wrap conversation in a report. Do not add a
+preamble before one.
+
+This repo has no Agent OS task state, so `TASK_ID` is normally `N/A`. Use a real jobby
+issue (`#N` from `.jobby/github-issues.tsv`) or backlog id (`JOBBY-BL-###`) when one
+identifies the work. Never invent persistent state. See `.jobby/GITHUB.md`.

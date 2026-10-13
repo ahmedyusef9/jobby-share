@@ -1,0 +1,21 @@
+---
+description: Evaluation discipline for scoring and model-facing changes
+globs: evals/**,tests/**,test/**,*-eval.mjs,eval-golden.mjs,openrouter-runner.mjs,providers/**
+alwaysApply: false
+---
+
+# Evals & LLMOps
+
+The 1.0-5.0 score off the A-F rubric is the product. Any change that can move it is a
+behavior change and needs evidence before it ships.
+
+- Changed rubric, mode text, prompt, model, or provider: run `node eval-golden.mjs`
+  against `evals/golden` and report the delta. "It looks better" is not a result.
+- Add at least one red-team case for anything that ingests scraped text: a JD carrying
+  embedded instructions, an inflated self-reported score, a fake comp figure.
+- Beware Goodhart: once the golden set becomes the target it stops measuring quality.
+  Refresh fixtures periodically and keep some cases the prompt has never seen.
+- Model swaps are not free. Compare score distribution and cost/latency, not one listing.
+- Keep runs reproducible: pin the model, record the version, version prompts in git.
+- Providers are auto-discovered from `tests/providers/{name}.test.mjs` — a new provider
+  means exactly that one test file, not a new section in `test-all.mjs`.

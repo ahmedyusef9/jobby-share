@@ -1,0 +1,67 @@
+---
+description: Fork topology and the system/user layer invariant that keeps local work survivable
+alwaysApply: true
+---
+
+# Upstream contract
+
+`jobby` is a fork of `santifer/career-ops`, tracked live:
+
+- `origin` -> `ahmedyusef9/jobby`
+- `upstream` -> `santifer/career-ops`
+
+`update-system.mjs` replaces every path in its `SYSTEM_PATHS` list with the upstream
+version. Anything written to a system-layer path is **destroyed on the next update, with
+no conflict and no warning**. This is the single invariant that matters here.
+
+## Never customize these (system layer)
+
+`AGENTS.md` · `CLAUDE.md` · `CODEX.md` · `OPENCODE.md` · `GEMINI.md` · `KIMI.md` ·
+`modes/**` except `_custom.md` and `_profile.md` · all root `*.mjs` · `lib/**` ·
+`docs/**` · `templates/**` · `dashboard/**` · `batch/**` · `plugins/**` ·
+`plugins-registry/**` · `.agents/**` · `.claude/skills/**` · `.claude-plugin/**` ·
+`.github/**` · `.cursor/skills/career-ops/**` · `VERSION` · `DATA_CONTRACT.md`
+
+Consequences worth internalizing: our governance layer cannot live in `AGENTS.md`,
+`.agents/skills/`, `.claude/skills/`, `.github/workflows/`, or upstream's
+`.cursor/skills/career-ops/`. CI gates and portable skills copied there are wasted work.
+
+From career-ops v1.26, `.cursor/skills/` is in `SYSTEM_PATHS`. Upstream ships
+`.cursor/skills/career-ops/SKILL.md` only. Jobby-authored skills beside it
+(`dry-reuse`, `sdlc-report`, `upstream-sync`) are local extras: the updater keeps
+them unless you pass `--force`. Do not put new jobby skills under `career-ops/`.
+
+## Put customization here instead
+
+| Need | Destination | Versioned? |
+|------|-------------|-----------|
+| Engineering/agent rules | `.cursor/rules/**` | Yes — committed |
+| Reusable procedures | `.cursor/skills/**` except `career-ops/` | Yes — committed |
+| Cross-CLI house rules | `modes/_custom.md` | No — gitignored |
+| Identity, narrative, comp | `modes/_profile.md` | No — gitignored |
+| Targets, portals, facts | `config/profile.yml`, `config/cv-facts.json`, `portals.yml` | No — gitignored |
+| Private plugins | `plugins.local/`, `config/plugins.yml` | No — gitignored |
+
+`.cursor/rules/` is still absent from `SYSTEM_PATHS` and is the durable home for
+jobby engineering rules. `modes/_custom.md` is upstream's own sanctioned hook and
+is read by every CLI (Claude Code, Codex, OpenCode, Qwen, Grok, Kimi), so
+behavior that must apply outside Cursor belongs there — accepting that it stays local.
+
+## Updating
+
+Commit or stash first; the updater checks out upstream files over the working tree.
+
+```bash
+node update-system.mjs check
+node update-system.mjs apply      # only after the user confirms
+node update-system.mjs rollback   # if it goes wrong
+```
+
+Keep `main` a clean mirror so updates stay trivial. Sync upstream with
+`git fetch upstream && git merge --ff-only upstream/main`.
+
+## When a system file genuinely must change
+
+A real bug or missing capability in upstream code is not a customization. Fix it on a
+branch as a minimal diff and send it upstream as a PR. Do not carry silent local patches
+in system-layer files — they conflict on every update and get quietly reverted.
