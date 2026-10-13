@@ -80,6 +80,135 @@
   <a href="TRADEMARK.md"><img src="https://img.shields.io/badge/Trademark-Policy-blue.svg" alt="Trademark Policy"></a>
 </p>
 
+## Jobby — the web + container edition of career-ops
+
+**Jobby** is a fork of [santifer/career-ops](https://github.com/santifer/career-ops)
+(MIT). career-ops is a CLI toolkit you drive from an AI coding agent. Jobby keeps
+that engine untouched and adds a **web app, a multi-user server and an MCP
+server**, all shipped as Docker containers, so people can use it from a browser
+or from ChatGPT / Claude / Cursor without installing an AI CLI.
+
+### What Jobby adds on top of career-ops
+
+| Area | career-ops (upstream) | Jobby adds |
+|---|---|---|
+| Interface | AI coding CLI + terminal dashboard | Web app (Next.js): Today, Explore, Pipeline, CV, Rules, Profiles, Portals, Analytics, MCP, Config |
+| Users | One person, one folder | Accounts and isolated tenants (`tenants/{id}/`), operator + member roles, admin panel |
+| Sign-in | — | Operator password, email sign-up (Appwrite), optional GitHub / Google |
+| AI access | Your local CLI | MCP server: ChatGPT, Claude.ai, Cursor and Claude Code call Jobby tools on your account with a personal `jb_…` key |
+| Job search | `scan.mjs` from the terminal | Explore page: keyword scan (Greenhouse/Ashby/Lever boards, LinkedIn/Indeed/Google Jobs via JobSpy, Drushim) with country, distance, include/exclude filters, plus plain-language AI search; saved search profiles |
+| Resume | Edit `cv.md` by hand | CV page: paste or drop a PDF / `.md`, live editor + preview, chat edits ("shorten the summary"), styling, photo, one-page PDF, version history |
+| Keys and cost | Your keys in `.env` | Each user stores their own AI key (encrypted with `JOBBY_MASTER_KEY`) or uses their own ChatGPT/Claude via MCP; per-plan daily scan and MCP limits |
+| Runtime | Node on your machine | `web` + `worker` + `redis` containers (Docker Compose; Railway files included) |
+
+Your data stays files: `cv.md`, `data/applications.md`, `reports/` — per tenant,
+on the host, never inside the image.
+
+### 1. Deploy your own container
+
+Requirements: Docker with Compose v2, ~4 GB free disk, and `openssl`.
+
+```bash
+git clone https://github.com/ahmedyusef9/jobby-share.git jobby && cd jobby
+cp deploy/.env.example deploy/.env
+```
+
+Edit `deploy/.env` and set these (every variable is explained at the top of
+[`deploy/.env.example`](deploy/.env.example)):
+
+```bash
+AUTH_SECRET=$(openssl rand -base64 32)           # session signing
+JOBBY_OPERATOR_SECRET=$(openssl rand -base64 24) # your admin password — keep it
+JOBBY_MASTER_KEY=$(openssl rand -base64 32)      # encrypts stored AI keys — back it up
+JOBBY_HOST_ROOT=/absolute/path/to/jobby          # output of `pwd` in the repo
+```
+
+Start it:
+
+```bash
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+docker compose -f deploy/docker-compose.yml ps         # web, worker, redis: running
+```
+
+Open **http://localhost:4700** → **Operator sign-in** → paste `JOBBY_OPERATOR_SECRET`.
+
+| Task | Command |
+|---|---|
+| Logs | `docker compose -f deploy/docker-compose.yml logs -f web worker` |
+| Stop | `docker compose -f deploy/docker-compose.yml down` |
+| Update | `git pull && docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build` |
+| Backup | Copy the repo folder (`cv.md`, `data/`, `reports/`, `tenants/`) and `deploy/.env` |
+| Change port | Set `JOBBY_WEB_PORT` and `AUTH_URL` to the same port |
+
+**Personal vs shared instance.** `AUTH_SINGLE_TENANT=1` (default) is for one
+person on their own machine. For a team server set `AUTH_SINGLE_TENANT=0` and
+configure Appwrite (`APPWRITE_*`, then `node scripts/appwrite-schema.mjs`) so
+people can sign up with email, and/or GitHub / Google OAuth. Each person then
+gets an isolated workspace.
+
+**Reaching it from other devices.** The app listens on `127.0.0.1` only. Put
+HTTPS in front — Tailscale Funnel (`tailscale funnel --bg --https=443
+http://127.0.0.1:4700`), Cloudflare Tunnel, or a reverse proxy — then set
+`AUTH_URL` and `JOBBY_MCP_PUBLIC_URL` to that `https://` origin and restart.
+ChatGPT and Claude.ai need a public HTTPS URL without a port.
+
+### 2. Use it
+
+1. **Config** — pick how AI work runs: *Paste an AI key* (OpenRouter `sk-or-v1-…`,
+   OpenAI `sk-…`), the built-in *OpenCode*, or a local Ollama. Saved per user,
+   encrypted. Skip it if you only use ChatGPT/Claude through MCP.
+2. **CV** — paste your resume or drop a PDF / `.md`; review and save. Edit the
+   markdown with live preview, or type a request in *Ask to edit the CV*.
+   Adjust styling and photo, render the one-page PDF, download it, and save
+   versions to the history.
+3. **Rules** — house rules for the AI (`MUST:` / `SHOULD:` / `HINT:`), e.g. "CV
+   PDFs are one page".
+4. **Profiles** — saved searches: roles, locations, exclusions.
+5. **Explore** — find jobs. *Scan* mode: roles to find, country, distance,
+   always-include / exclude words, sources, scan depth. *AI search* mode: describe
+   it in plain language ("AI infra at climate startups, remote EU"). Save the
+   results you like.
+6. **Pipeline** — your tracker: status (Evaluated → Applied → Interview → Offer…),
+   job info, score report, tailored PDF, Apply link.
+7. **Today / Analytics** — what needs action now; funnel and response stats.
+8. **Account** — export all your data as a zip, or delete the account.
+
+### 3. Connect ChatGPT, Claude or Cursor (MCP)
+
+Open **MCP** in the sidebar, tap *ChatGPT*, *Claude* or *Cursor* and **Add key**.
+The `jb_…` key is shown **once** (a QR code is available) — treat it as a
+password and revoke it there if it leaks.
+
+- **ChatGPT / Claude.ai:** add a custom connector with
+  `https://<your-public-host>/mcp/jb_…` (needs the HTTPS setup above).
+- **Cursor / Claude Code** (`~/.cursor/mcp.json`):
+
+  ```json
+  { "mcpServers": { "jobby": {
+      "url": "http://localhost:4700/api/mcp",
+      "headers": { "Authorization": "Bearer jb_…" } } } }
+  ```
+
+Then just ask: *"whoami"*, *"find remote backend roles in Germany and save the
+best 5"*, *"show my pipeline"*, *"update my resume summary to…"*, *"generate my
+CV PDF"*. Tools include `explore_jobs`, `save_jobs`, `job_table`,
+`list_applications`, `update_application`, `get_resume`, `update_resume`,
+`resume_upload`, `resume_generate`, `resume_download_link`, `get_rules`,
+`update_rules`, `submit_score`, `export_snapshot`. Scoring runs on **your**
+ChatGPT/Claude subscription — the server spends no model tokens for you.
+
+### 4. Develop / modify
+
+- Web app: `web/` (Next.js). Shared CLI engine: root `*.mjs` + `lib/`. Containers:
+  `deploy/Dockerfile.web`, `deploy/Dockerfile.worker`, `deploy/docker-compose.yml`.
+- After any code change: `up -d --build` (no hot reload in the container).
+- Tests: `node test-all.mjs`; web E2E under `test/web-e2e/`.
+- Keep your personal files (`cv.md`, `config/profile.yml`, `portals.yml`,
+  `data/`, `deploy/.env`) out of git — they are already in `.gitignore`.
+
+The rest of this README is the upstream career-ops documentation for the CLI
+workflow, which still works unchanged in this repo.
+
 ## What Is This
 
 career-ops ([career-ops.org](https://career-ops.org), also known as **careerops**) turns any AI coding CLI into a full job search command center. Instead of manually tracking applications in a spreadsheet, you get an AI-powered pipeline that:
@@ -129,16 +258,7 @@ career-ops is the first reference implementation of [the CareerOps Manifesto](ht
 
 ## Quick Start
 
-**Jobby web app (Docker):**
-
-```bash
-cp deploy/.env.example deploy/.env   # fill the 3 secrets + JOBBY_HOST_ROOT=$(pwd)
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
-# → http://localhost:4700, "Operator sign-in" with JOBBY_OPERATOR_SECRET
-```
-
-Every token, how to generate it, and how to expose the app publicly is
-documented at the top of [`deploy/.env.example`](deploy/.env.example).
+**Jobby web app (Docker):** see [Deploy your own container](#1-deploy-your-own-container) above.
 
 **Fastest way — one command:**
 
